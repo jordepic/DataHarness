@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package org.example.proto;
+
+option java_multiple_files = true;
+option java_package = "org.example.proto";
+option java_outer_classname = "CatalogProto";
+
+service CatalogService {
+  rpc CreateTable(CreateTableRequest) returns (CreateTableResponse) {}
+  rpc UpsertSource(UpsertSourceRequest) returns (UpsertSourceResponse) {}
+  rpc FetchSources(FetchSourcesRequest) returns (FetchSourcesResponse) {}
+}
+
+message CreateTableRequest {
+  string name = 1;
+}
+
+message CreateTableResponse {
+  bool success = 1;
+  string message = 2;
+  int64 table_id = 3;
+}
+
+message UpsertSourceRequest {
+  string table_name = 1;
+  oneof source {
+    KafkaSourceMessage kafka_source = 2;
+    IcebergSourceMessage iceberg_source = 3;
+  }
+}
+
+message UpsertSourceResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message FetchSourcesRequest {
+  string table_name = 1;
+}
+
+message FetchSourcesResponse {
+  repeated TableSourceMessage sources = 1;
+}
+
+message KafkaSourceMessage {
+  string trino_catalog_name = 1;
+  string trino_schema_name = 2;
+  int64 start_offset = 3;
+  int64 end_offset = 4;
+  int32 partition_number = 5;
+  string topic_name = 6;
+}
+
+message IcebergSourceMessage {
+  string trino_catalog_name = 1;
+  string trino_schema_name = 2;
+  string table_name = 3;
+  int64 read_timestamp = 4;
+}
+
+message TableSourceMessage {
+  string table_name = 1;
+  oneof source {
+    KafkaSourceMessage kafka_source = 2;
+    IcebergSourceMessage iceberg_source = 3;
+  }
+}
