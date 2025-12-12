@@ -33,20 +33,18 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.dataharness.proto.*;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Path;
 import java.util.*;
 
 public class DataPopulator {
   private static final Logger logger = LoggerFactory.getLogger(DataPopulator.class);
   private static final String BOOTSTRAP_SERVERS = "localhost:9092";
   private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
-  private static final String TOPIC = "testKafka";
+  private static final String TOPIC = "kafka_test";
   private static final String DATA_HARNESS_TABLE = "bootstrap";
-  private static final String ICEBERG_TABLE_NAME = "testIceberg";
+  private static final String ICEBERG_TABLE_NAME = "iceberg_test";
 
   public long populateKafka() throws Exception {
     SchemaRegistryClient client = new CachedSchemaRegistryClient(SCHEMA_REGISTRY_URL, 100);
@@ -106,8 +104,7 @@ public class DataPopulator {
     return messages.size();
   }
 
-  public long populateIceberg(@TempDir Path tempDir) throws Exception {
-    logger.info("Using temp directory: {}", tempDir);
+  public long populateIceberg() throws Exception {
 
     org.apache.iceberg.Schema icebergSchema = new org.apache.iceberg.Schema(
       Types.NestedField.required(1, "id", Types.IntegerType.get()),
@@ -160,7 +157,9 @@ public class DataPopulator {
       logger.info("Record: id={}, name={}", record.getField("id"), record.getField("name"));
     }
 
-    OutputFile outputFile = table.io().newOutputFile(tempDir.toString() + "/data.parquet");
+    String fileLocation = "/tmp/data.parquet";
+    table.io().deleteFile(fileLocation);
+    OutputFile outputFile = table.io().newOutputFile(fileLocation);
 
     FileAppenderFactory<Record> factory = new GenericAppenderFactory(table.schema());
     FileAppender<Record> appender = factory.newAppender(outputFile, FileFormat.PARQUET);
@@ -172,7 +171,7 @@ public class DataPopulator {
     appender.close();
 
     DataFile dataFile = DataFiles.builder(table.spec())
-      .withInputFile(table.io().newInputFile(tempDir + "/data.parquet"))
+      .withInputFile(table.io().newInputFile(fileLocation))
       .withMetrics(appender.metrics())
       .withFormat(FileFormat.PARQUET)
       .build();
@@ -182,7 +181,6 @@ public class DataPopulator {
       .commit();
 
     logger.info("Successfully wrote {} records to Iceberg table", records.size());
-    logger.info("Data written to temp directory: {}", tempDir);
 
     logger.info("{}", table.currentSnapshot().summary().get("added-records"));
 
@@ -190,13 +188,13 @@ public class DataPopulator {
   }
 
   @Test
-  public void bootstrapDataHarness(@TempDir Path tempDir) throws Exception {
+  public void bootstrapDataHarness() throws Exception {
     logger.info("=== Starting Data Harness Bootstrap ===");
 
     long kafkaMessages = populateKafka();
     logger.info("Kafka population complete");
 
-    long snapshotId = populateIceberg(tempDir);
+    long snapshotId = populateIceberg();
     logger.info("Iceberg population complete");
 
     ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
