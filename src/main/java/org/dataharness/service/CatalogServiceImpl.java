@@ -1,12 +1,12 @@
 // Copyright (c) 2025
-package org.example.service;
+package org.dataharness.service;
 
 import io.grpc.stub.StreamObserver;
-import org.example.db.HibernateSessionManager;
-import org.example.entity.DataHarnessTable;
-import org.example.entity.IcebergSourceEntity;
-import org.example.entity.KafkaSourceEntity;
-import org.example.proto.*;
+import org.dataharness.db.HibernateSessionManager;
+import org.dataharness.entity.DataHarnessTable;
+import org.dataharness.entity.IcebergSourceEntity;
+import org.dataharness.entity.KafkaSourceEntity;
+import org.dataharness.proto.*;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
