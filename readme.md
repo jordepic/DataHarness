@@ -36,6 +36,11 @@ The main service exposed via gRPC with the following RPC methods:
 - **Request**: `FetchSourcesRequest` with table name
 - **Response**: `FetchSourcesResponse` with list of table sources
 
+#### **ListTables**
+
+- **Request**: `ListTablesRequest` (empty request)
+- **Response**: `ListTablesResponse` with list of all table names in the catalog
+
 ### Data Source Support
 
 #### **Kafka Source**

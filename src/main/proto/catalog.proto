@@ -10,6 +10,7 @@ service CatalogService {
   rpc CreateTable(CreateTableRequest) returns (CreateTableResponse) {}
   rpc UpsertSource(UpsertSourceRequest) returns (UpsertSourceResponse) {}
   rpc FetchSources(FetchSourcesRequest) returns (FetchSourcesResponse) {}
+  rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
 }
 
 message CreateTableRequest {
@@ -65,4 +66,11 @@ message TableSourceMessage {
     KafkaSourceMessage kafka_source = 2;
     IcebergSourceMessage iceberg_source = 3;
   }
+}
+
+message ListTablesRequest {
+}
+
+message ListTablesResponse {
+  repeated string table_names = 1;
 }

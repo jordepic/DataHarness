@@ -380,6 +380,7 @@
               <jvmFlag>-Dhibernate.connection.username=postgres</jvmFlag>
               <jvmFlag>-Dhibernate.connection.password=postgres</jvmFlag>
               <jvmFlag>-Dhibernate.hbm2ddl.auto=update</jvmFlag>
+              <jvmFlag>-Dgrpc.server.port=50051</jvmFlag>
             </jvmFlags>
           </container>
         </configuration>

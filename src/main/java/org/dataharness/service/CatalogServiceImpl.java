@@ -203,6 +203,30 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     }
   }
 
+  /**
+   * Lists all tables in the DataHarnessTable catalog.
+   *
+   * @param request          The list tables request
+   * @param responseObserver The observer to send the response to
+   */
+  @Override
+  public void listTables(ListTablesRequest request, StreamObserver<ListTablesResponse> responseObserver) {
+    try (Session session = HibernateSessionManager.getSession()) {
+      List<DataHarnessTable> tables = findAllTables(session);
+
+      ListTablesResponse.Builder responseBuilder = ListTablesResponse.newBuilder();
+      for (DataHarnessTable table : tables) {
+        responseBuilder.addTableNames(table.getName());
+      }
+
+      responseObserver.onNext(responseBuilder.build());
+      responseObserver.onCompleted();
+    } catch (Exception e) {
+      logger.error("Error listing tables", e);
+      responseObserver.onError(e);
+    }
+  }
+
   private DataHarnessTable findTableByName(Session session, String tableName) {
     Query<DataHarnessTable> query = session.createQuery("FROM DataHarnessTable WHERE name = :name",
       DataHarnessTable.class);
@@ -245,6 +269,11 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
       IcebergSourceEntity.class);
     query.setParameter("tableId", tableId);
 
+    return query.getResultList();
+  }
+
+  private List<DataHarnessTable> findAllTables(Session session) {
+    Query<DataHarnessTable> query = session.createQuery("FROM DataHarnessTable", DataHarnessTable.class);
     return query.getResultList();
   }
 }

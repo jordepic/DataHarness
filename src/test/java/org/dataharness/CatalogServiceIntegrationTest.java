@@ -6,10 +6,10 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import org.dataharness.proto.*;
 import org.dataharness.server.GrpcServer;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.io.IOException;
@@ -23,7 +23,7 @@ public class CatalogServiceIntegrationTest {
   private static ManagedChannel channel;
   private CatalogServiceGrpc.CatalogServiceBlockingStub stub;
 
-  @BeforeClass
+  @BeforeAll
   public static void setUpClass() throws IOException {
     postgres = new PostgreSQLContainer<>("postgres:15").withDatabaseName("dataharness").withUsername("postgres")
       .withPassword("postgres");
@@ -34,14 +34,15 @@ public class CatalogServiceIntegrationTest {
     System.setProperty("hibernate.connection.username", "postgres");
     System.setProperty("hibernate.connection.password", "postgres");
     System.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+    System.setProperty("grpc.server.port", "50052");
 
     grpcServer = new GrpcServer();
     grpcServer.start();
 
-    channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
+    channel = ManagedChannelBuilder.forAddress("localhost", 50052).usePlaintext().build();
   }
 
-  @AfterClass
+  @AfterAll
   public static void tearDownClass() throws InterruptedException {
     if (channel != null) {
       channel.shutdown();
@@ -54,7 +55,7 @@ public class CatalogServiceIntegrationTest {
     }
   }
 
-  @Before
+  @BeforeEach
   public void setUp() {
     stub = CatalogServiceGrpc.newBlockingStub(channel);
   }
@@ -205,5 +206,31 @@ public class CatalogServiceIntegrationTest {
     assertThat(source.getKafkaSource().getTrinoSchemaName()).isEqualTo("schema responsev2");
     assertThat(source.getKafkaSource().getStartOffset()).isEqualTo(100);
     assertThat(source.getKafkaSource().getEndOffset()).isEqualTo(200);
+  }
+
+  @Test
+  public void testListTables() {
+    String tableName1 = "test responsetable responselist1";
+    String tableName2 = "test responsetable responselist2";
+    String tableName3 = "test responsetable responselist3";
+
+    stub.createTable(CreateTableRequest.newBuilder().setName(tableName1).build());
+    stub.createTable(CreateTableRequest.newBuilder().setName(tableName2).build());
+    stub.createTable(CreateTableRequest.newBuilder().setName(tableName3).build());
+
+    ListTablesRequest request = ListTablesRequest.newBuilder().build();
+    ListTablesResponse response = stub.listTables(request);
+
+    assertThat(response.getTableNamesList()).contains(tableName1, tableName2, tableName3);
+    assertThat(response.getTableNamesCount()).isGreaterThanOrEqualTo(3);
+  }
+
+  @Test
+  public void testListTablesReturnsResponse() {
+    ListTablesRequest request = ListTablesRequest.newBuilder().build();
+    ListTablesResponse response = stub.listTables(request);
+
+    assertThat(response).isNotNull();
+    assertThat(response.getTableNamesList()).isNotNull();
   }
 }

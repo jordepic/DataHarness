@@ -12,13 +12,15 @@ import org.slf4j.LoggerFactory;
 
 public class GrpcServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(GrpcServer.class);
-  private static final int PORT = 50051;
+  private static final int DEFAULT_PORT = 50051;
+  private static final String PORT_PROPERTY = "grpc.server.port";
   private Server server;
 
   public void start() throws IOException {
-    server = ServerBuilder.forPort(PORT).addService(new CatalogServiceImpl()).build().start();
+    int port = Integer.parseInt(System.getProperty(PORT_PROPERTY, String.valueOf(DEFAULT_PORT)));
+    server = ServerBuilder.forPort(port).addService(new CatalogServiceImpl()).build().start();
 
-    LOGGER.info("gRPC server started on port {}", PORT);
+    LOGGER.info("gRPC server started on port {}", port);
 
     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
   }
