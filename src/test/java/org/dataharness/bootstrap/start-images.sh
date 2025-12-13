@@ -17,4 +17,4 @@ if [ $? -ne 0 ]; then
 fi
 
 cd "$DIR"
-docker compose "$@"
+docker compose up
