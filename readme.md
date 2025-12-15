@@ -31,10 +31,11 @@ The main service exposed via gRPC with the following RPC methods:
 - **Request**: `UpsertSourceRequest` with table name and source configuration (Kafka or Iceberg)
 - **Response**: `UpsertSourceResponse` with success status
 
-#### **FetchSources**
+#### **LoadTable**
 
-- **Request**: `FetchSourcesRequest` with table name
-- **Response**: `FetchSourcesResponse` with list of table sources
+- **Request**: `LoadTableRequest` with table name
+- **Response**: `LoadTableResponse` with table schemas (Avro and/or Iceberg) and list of sources
+- Retrieves a table along with its associated schemas and configured data sources
 
 #### **ListTables**
 
@@ -43,9 +44,10 @@ The main service exposed via gRPC with the following RPC methods:
 
 #### **SetSchema**
 
-- **Request**: `SetSchemaRequest` with table name and optional `avro_schema` field
+- **Request**: `SetSchemaRequest` with table name and optional `avro_schema` and/or `iceberg_schema` fields
 - **Response**: `SetSchemaResponse` with success status
-- Allows associating an Avro schema with a DataHarness table, which is returned when fetching sources
+- Allows associating Avro and/or Iceberg schemas with a DataHarness table
+- Schemas are persisted and returned when loading tables
 
 ### Data Source Support
 
@@ -69,6 +71,7 @@ Represents a managed table in the system with associated metadata, including:
 
 - Table name (unique identifier)
 - Avro schema (optional nullable string for schema definitions)
+- Iceberg schema (optional nullable string for schema definitions)
 
 ### KafkaSourceEntity
 
@@ -147,8 +150,9 @@ Main class: `org.dataharness.Main`
 - ✅ **Kafka Source Integration**: Ingest data from Kafka topics with partition-level offset management
 - ✅ **Iceberg Source Integration**: Query Iceberg tables with time-travel support
 - ✅ **Source Management**: List and manage sources associated with a DataHarness table
-- ✅ **Avro Schema Association**: Associate Avro schemas with DataHarness tables for schema management
-- ✅ **gRPC API**: Complete service layer for catalog operations
+- ✅ **Multi-Schema Support**: Associate both Avro and Iceberg schemas with DataHarness tables for flexible schema management
+- ✅ **Schema Persistence**: Schemas are persisted in the database and returned when loading tables
+- ✅ **gRPC API**: Complete service layer for catalog operations with LoadTable, SetSchema, and source management
 
 ## Roadmap
 
