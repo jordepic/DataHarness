@@ -23,6 +23,9 @@ public class DataHarnessTable {
   @Column(nullable = true, columnDefinition = "TEXT")
   private String avroSchema;
 
+  @Column(nullable = true, columnDefinition = "TEXT")
+  private String icebergSchema;
+
   public DataHarnessTable() {
   }
 
@@ -52,5 +55,13 @@ public class DataHarnessTable {
 
   public void setAvroSchema(String avroSchema) {
     this.avroSchema = avroSchema;
+  }
+
+  public String getIcebergSchema() {
+    return icebergSchema;
+  }
+
+  public void setIcebergSchema(String icebergSchema) {
+    this.icebergSchema = icebergSchema;
   }
 }

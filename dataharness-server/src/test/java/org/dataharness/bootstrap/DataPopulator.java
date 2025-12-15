@@ -23,6 +23,7 @@ import org.apache.iceberg.io.FileAppenderFactory;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.SchemaParser;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -46,13 +47,23 @@ public class DataPopulator {
   private static final String DATA_HARNESS_TABLE = "bootstrap";
   private static final String ICEBERG_TABLE_NAME = "iceberg_test";
 
-  public long populateKafka() throws Exception {
+  record KafkaPopulationResult(String avroSchema, long messageCount) {
+
+  }
+
+  record IcebergPopulationResult(String icebergSchema, long snapshotId) {
+
+  }
+
+  public KafkaPopulationResult populateKafka() throws Exception {
     SchemaRegistryClient client = new CachedSchemaRegistryClient(SCHEMA_REGISTRY_URL, 100);
 
     Schema schema = ReflectData.get().getSchema(TestMessage.class);
+    String avroSchemaJson = schema.toString();
 
     client.register(TOPIC + "-value", schema);
     logger.info("Schema registered for topic: {}", TOPIC);
+    logger.info("Avro schema: {}", avroSchemaJson);
 
     Properties producerProps = new Properties();
     producerProps.put("bootstrap.servers", BOOTSTRAP_SERVERS);
@@ -101,16 +112,19 @@ public class DataPopulator {
       }
     }
 
-    return messages.size();
+    return new KafkaPopulationResult(avroSchemaJson, messages.size());
   }
 
-  public long populateIceberg() throws Exception {
+  public IcebergPopulationResult populateIceberg() throws Exception {
 
     org.apache.iceberg.Schema icebergSchema = new org.apache.iceberg.Schema(
       Types.NestedField.required(1, "id", Types.IntegerType.get()),
       Types.NestedField.required(2, "name", Types.StringType.get())
     );
     logger.info("Created Iceberg schema: {}", icebergSchema);
+
+    String icebergSchemaJson = SchemaParser.toJson(icebergSchema);
+    logger.info("Iceberg schema as JSON: {}", icebergSchemaJson);
 
     Map<String, String> properties = new HashMap<>();
     properties.put("uri", "http://localhost:9001/iceberg");
@@ -182,19 +196,20 @@ public class DataPopulator {
 
     logger.info("Successfully wrote {} records to Iceberg table", records.size());
 
+    long snapshotId = table.currentSnapshot().snapshotId();
     logger.info("{}", table.currentSnapshot().summary().get("added-records"));
 
-    return table.currentSnapshot().snapshotId();
+    return new IcebergPopulationResult(icebergSchemaJson, snapshotId);
   }
 
   @Test
   public void bootstrapDataHarness() throws Exception {
     logger.info("=== Starting Data Harness Bootstrap ===");
 
-    long kafkaMessages = populateKafka();
+    KafkaPopulationResult kafkaResult = populateKafka();
     logger.info("Kafka population complete");
 
-    long snapshotId = populateIceberg();
+    IcebergPopulationResult icebergResult = populateIceberg();
     logger.info("Iceberg population complete");
 
     ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
@@ -209,11 +224,11 @@ public class DataPopulator {
       logger.info("Created table '{}': {}", DATA_HARNESS_TABLE, createTableResponse.getMessage());
 
       KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
-        .setTrinoCatalogName("bootstrap-catalog")
+        .setTrinoCatalogName("kafka")
         .setTrinoSchemaName("default")
         .setTopicName(TOPIC)
         .setStartOffset(0)
-        .setEndOffset(kafkaMessages)
+        .setEndOffset(kafkaResult.messageCount)
         .setPartitionNumber(0)
         .build();
 
@@ -226,10 +241,10 @@ public class DataPopulator {
       logger.info("Registered Kafka source: {}", kafkaSourceResponse.getMessage());
 
       IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
-        .setTrinoCatalogName("bootstrap-catalog")
+        .setTrinoCatalogName("iceberg")
         .setTrinoSchemaName("default")
         .setTableName(ICEBERG_TABLE_NAME)
-        .setReadTimestamp(snapshotId)
+        .setReadTimestamp(icebergResult.snapshotId)
         .build();
 
       UpsertSourceRequest icebergSourceRequest = UpsertSourceRequest.newBuilder()
@@ -240,11 +255,10 @@ public class DataPopulator {
       var icebergSourceResponse = stub.upsertSource(icebergSourceRequest);
       logger.info("Registered Iceberg source: {}", icebergSourceResponse.getMessage());
 
-      String avroSchemaString = "{\"type\": \"record\", \"name\": \"TestMessage\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}, {\"name\": \"name\", \"type\": \"string\"}]}";
-
       SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
         .setTableName(DATA_HARNESS_TABLE)
-        .setAvroSchema(avroSchemaString)
+        .setAvroSchema(kafkaResult.avroSchema)
+        .setIcebergSchema(icebergResult.icebergSchema)
         .build();
 
       var schemaResponse = stub.setSchema(schemaRequest);
@@ -266,10 +280,29 @@ public class DataPopulator {
       .build();
 
     LoadTableResponse response = stub.loadTable(request);
-    
-    if (response.hasSchema()) {
-      logger.info("Loaded table '{}' with schema: {}", DATA_HARNESS_TABLE, response.getSchema());
-      logger.info("✓ Successfully loaded table schema");
+
+    int schemaCount = 0;
+    if (response.hasAvroSchema()) {
+      logger.info("Loaded table '{}' with Avro schema: {}", DATA_HARNESS_TABLE, response.getAvroSchema());
+      schemaCount++;
+    }
+    if (response.hasIcebergSchema()) {
+      logger.info("Loaded table '{}' with Iceberg schema: {}", DATA_HARNESS_TABLE, response.getIcebergSchema());
+      schemaCount++;
+    }
+
+    logger.info("Sources count: {}", response.getSourcesCount());
+    for (TableSourceMessage source : response.getSourcesList()) {
+      if (source.hasKafkaSource()) {
+        logger.info("  - Kafka source: topic={}, partition={}", source.getKafkaSource().getTopicName(),
+          source.getKafkaSource().getPartitionNumber());
+      } else if (source.hasIcebergSource()) {
+        logger.info("  - Iceberg source: table={}", source.getIcebergSource().getTableName());
+      }
+    }
+
+    if (schemaCount > 0) {
+      logger.info("✓ Successfully loaded table with {} schema(s)", schemaCount);
     } else {
       logger.warn("✗ Table '{}' has no schema", DATA_HARNESS_TABLE);
     }

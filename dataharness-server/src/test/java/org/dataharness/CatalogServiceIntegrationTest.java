@@ -4,8 +4,11 @@ package org.dataharness;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import org.dataharness.db.HibernateSessionManager;
 import org.dataharness.proto.*;
 import org.dataharness.server.GrpcServer;
+import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +60,35 @@ public class CatalogServiceIntegrationTest {
 
   @BeforeEach
   public void setUp() {
+    clearDatabase();
+    try {
+      if (stub != null) {
+        channel.shutdown();
+      }
+      channel = ManagedChannelBuilder.forAddress("localhost", 50052).usePlaintext().build();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     stub = CatalogServiceGrpc.newBlockingStub(channel);
+  }
+
+  private void clearDatabase() {
+    try (Session session = HibernateSessionManager.getSession()) {
+      session.beginTransaction();
+
+      Query<?> deleteKafkaSources = session.createQuery("DELETE FROM KafkaSourceEntity");
+      deleteKafkaSources.executeUpdate();
+
+      Query<?> deleteIcebergSources = session.createQuery("DELETE FROM IcebergSourceEntity");
+      deleteIcebergSources.executeUpdate();
+
+      Query<?> deleteTables = session.createQuery("DELETE FROM DataHarnessTable");
+      deleteTables.executeUpdate();
+
+      session.getTransaction().commit();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
@@ -145,8 +176,8 @@ public class CatalogServiceIntegrationTest {
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse response = stub.loadTable(loadRequest);
 
-    assertThat(response.hasSchema()).isTrue();
-    assertThat(response.getSchema()).isEqualTo(avroSchemaString);
+    assertThat(response.hasAvroSchema()).isTrue();
+    assertThat(response.getAvroSchema()).isEqualTo(avroSchemaString);
     assertThat(response.getSourcesCount()).isEqualTo(1);
     assertThat(response.getSourcesList().get(0).hasKafkaSource()).isTrue();
     assertThat(response.getSourcesList().get(0).getTableName()).isEqualTo(tableName);
@@ -161,7 +192,8 @@ public class CatalogServiceIntegrationTest {
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse response = stub.loadTable(loadRequest);
 
-    assertThat(response.hasSchema()).isFalse();
+    assertThat(response.hasAvroSchema()).isFalse();
+    assertThat(response.hasIcebergSchema()).isFalse();
     assertThat(response.getSourcesCount()).isEqualTo(0);
   }
 
@@ -190,7 +222,8 @@ public class CatalogServiceIntegrationTest {
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse response = stub.loadTable(loadRequest);
 
-    assertThat(response.hasSchema()).isFalse();
+    assertThat(response.hasAvroSchema()).isFalse();
+    assertThat(response.hasIcebergSchema()).isFalse();
   }
 
   @Test
@@ -270,8 +303,9 @@ public class CatalogServiceIntegrationTest {
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse response = stub.loadTable(loadRequest);
 
-    assertThat(response.hasSchema()).isTrue();
-    assertThat(response.getSchema()).isEqualTo(avroSchemaString);
+    assertThat(response.hasAvroSchema()).isTrue();
+    assertThat(response.getAvroSchema()).isEqualTo(avroSchemaString);
+    assertThat(response.getSourcesCount()).isEqualTo(1);
   }
 
   @Test
@@ -298,7 +332,8 @@ public class CatalogServiceIntegrationTest {
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse loadResponse = stub.loadTable(loadRequest);
 
-    assertThat(loadResponse.hasSchema()).isFalse();
+    assertThat(loadResponse.hasAvroSchema()).isFalse();
+    assertThat(loadResponse.hasIcebergSchema()).isFalse();
     assertThat(loadResponse.getSourcesCount()).isEqualTo(0);
   }
 
@@ -311,5 +346,70 @@ public class CatalogServiceIntegrationTest {
 
     assertThatThrownBy(() -> stub.setSchema(request))
       .isInstanceOf(StatusRuntimeException.class);
+  }
+
+  @Test
+  public void testSetIcebergSchema() {
+    String tableName = "test responsetable responseiceberg responseschema";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String icebergSchemaString = "{\"type\": \"struct\", \"fields\": [{\"id\": 1, \"name\": \"id\", \"required\": true, \"type\": \"int\"}, {\"id\": 2, \"name\": \"name\", \"required\": true, \"type\": \"string\"}]}";
+
+    SetSchemaRequest request = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setIcebergSchema(icebergSchemaString)
+      .build();
+
+    SetSchemaResponse response = stub.setSchema(request);
+
+    assertThat(response.getSuccess()).isTrue();
+    assertThat(response.getMessage()).isEqualTo("Schema set successfully");
+  }
+
+  @Test
+  public void testLoadTableWithIcebergSchema() {
+    String tableName = "test responsetable responseiceberg responseload";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String icebergSchemaString = "{\"type\": \"struct\", \"fields\": [{\"id\": 1, \"name\": \"id\", \"required\": true, \"type\": \"int\"}, {\"id\": 2, \"name\": \"name\", \"required\": true, \"type\": \"string\"}]}";
+
+    SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setIcebergSchema(icebergSchemaString)
+      .build();
+    stub.setSchema(schemaRequest);
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
+
+    assertThat(response.hasIcebergSchema()).isTrue();
+    assertThat(response.getIcebergSchema()).isEqualTo(icebergSchemaString);
+  }
+
+  @Test
+  public void testLoadTableWithBothSchemas() {
+    String tableName = "test responsetable responseboth responseschemas";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String avroSchemaString = "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}";
+    String icebergSchemaString = "{\"type\": \"struct\", \"fields\": [{\"id\": 1, \"name\": \"id\", \"required\": true, \"type\": \"int\"}, {\"id\": 2, \"name\": \"name\", \"required\": true, \"type\": \"string\"}]}";
+
+    SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setAvroSchema(avroSchemaString)
+      .setIcebergSchema(icebergSchemaString)
+      .build();
+    stub.setSchema(schemaRequest);
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
+
+    assertThat(response.hasAvroSchema()).isTrue();
+    assertThat(response.getAvroSchema()).isEqualTo(avroSchemaString);
+    assertThat(response.hasIcebergSchema()).isTrue();
+    assertThat(response.getIcebergSchema()).isEqualTo(icebergSchemaString);
   }
 }

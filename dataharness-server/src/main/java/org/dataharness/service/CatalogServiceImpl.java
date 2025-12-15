@@ -187,7 +187,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
 
       LoadTableResponse.Builder responseBuilder = LoadTableResponse.newBuilder();
       if (table.getAvroSchema() != null) {
-        responseBuilder.setSchema(table.getAvroSchema());
+        responseBuilder.setAvroSchema(table.getAvroSchema());
+      }
+      if (table.getIcebergSchema() != null) {
+        responseBuilder.setIcebergSchema(table.getIcebergSchema());
       }
 
       for (KafkaSourceEntity kafka : kafkaSources) {
@@ -222,7 +225,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   }
 
   /**
-   * Sets the Avro schema for a DataHarnessTable.
+   * Sets the Avro and/or Iceberg schema for a DataHarnessTable.
    *
    * @param request          The set schema request
    * @param responseObserver The observer to send the response to
@@ -249,7 +252,9 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
 
       try {
         String avroSchema = request.hasAvroSchema() ? request.getAvroSchema() : null;
+        String icebergSchema = request.hasIcebergSchema() ? request.getIcebergSchema() : null;
         table.setAvroSchema(avroSchema);
+        table.setIcebergSchema(icebergSchema);
         session.merge(table);
         transaction.commit();
 
