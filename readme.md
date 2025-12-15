@@ -41,6 +41,12 @@ The main service exposed via gRPC with the following RPC methods:
 - **Request**: `ListTablesRequest` (empty request)
 - **Response**: `ListTablesResponse` with list of all table names in the catalog
 
+#### **SetSchema**
+
+- **Request**: `SetSchemaRequest` with table name and optional `avro_schema` field
+- **Response**: `SetSchemaResponse` with success status
+- Allows associating an Avro schema with a DataHarness table, which is returned when fetching sources
+
 ### Data Source Support
 
 #### **Kafka Source**
@@ -59,7 +65,10 @@ The main service exposed via gRPC with the following RPC methods:
 
 ### DataHarnessTable
 
-Represents a managed table in the system with associated metadata.
+Represents a managed table in the system with associated metadata, including:
+
+- Table name (unique identifier)
+- Avro schema (optional nullable string for schema definitions)
 
 ### KafkaSourceEntity
 
@@ -138,6 +147,7 @@ Main class: `org.dataharness.Main`
 - ✅ **Kafka Source Integration**: Ingest data from Kafka topics with partition-level offset management
 - ✅ **Iceberg Source Integration**: Query Iceberg tables with time-travel support
 - ✅ **Source Management**: List and manage sources associated with a DataHarness table
+- ✅ **Avro Schema Association**: Associate Avro schemas with DataHarness tables for schema management
 - ✅ **gRPC API**: Complete service layer for catalog operations
 
 ## Roadmap

@@ -11,6 +11,7 @@ service CatalogService {
   rpc UpsertSource(UpsertSourceRequest) returns (UpsertSourceResponse) {}
   rpc FetchSources(FetchSourcesRequest) returns (FetchSourcesResponse) {}
   rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
+  rpc SetSchema(SetSchemaRequest) returns (SetSchemaResponse) {}
 }
 
 message CreateTableRequest {
@@ -66,6 +67,17 @@ message TableSourceMessage {
     KafkaSourceMessage kafka_source = 2;
     IcebergSourceMessage iceberg_source = 3;
   }
+  optional string avro_schema = 4;
+}
+
+message SetSchemaRequest {
+  string table_name = 1;
+  optional string avro_schema = 2;
+}
+
+message SetSchemaResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 message ListTablesRequest {

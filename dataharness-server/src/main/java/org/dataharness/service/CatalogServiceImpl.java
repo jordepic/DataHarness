@@ -31,9 +31,8 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   @Override
   public void createTable(CreateTableRequest request, StreamObserver<CreateTableResponse> responseObserver) {
 
-    Transaction transaction = null;
     try (Session session = HibernateSessionManager.getSession()) {
-      transaction = session.beginTransaction();
+      Transaction transaction = session.beginTransaction();
 
       String tableName = request.getName();
 
@@ -43,20 +42,29 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         return;
       }
 
-      DataHarnessTable table = new DataHarnessTable(tableName);
-      session.persist(table);
-      transaction.commit();
+      try {
+        DataHarnessTable table = new DataHarnessTable(tableName);
+        session.persist(table);
+        transaction.commit();
 
-      CreateTableResponse response = CreateTableResponse.newBuilder().setSuccess(true)
-        .setMessage("Table created successfully").setTableId(table.getId()).build();
+        CreateTableResponse response = CreateTableResponse.newBuilder().setSuccess(true)
+          .setMessage("Table created successfully").setTableId(table.getId()).build();
 
-      responseObserver.onNext(response);
-      responseObserver.onCompleted();
-    } catch (Exception e) {
-      if (transaction != null) {
-        transaction.rollback();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+      } catch (Exception e) {
+        try {
+          if (transaction.isActive()) {
+            transaction.rollback();
+          }
+        } catch (Exception rollbackEx) {
+          logger.warn("Error rolling back transaction", rollbackEx);
+        }
+        logger.error("Error creating table", e);
+        responseObserver.onError(e);
       }
-      logger.error("Error creating table", e);
+    } catch (Exception e) {
+      logger.error("Error creating table - session failure", e);
       responseObserver.onError(e);
     }
   }
@@ -72,9 +80,8 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   @Override
   public void upsertSource(UpsertSourceRequest request, StreamObserver<UpsertSourceResponse> responseObserver) {
 
-    Transaction transaction = null;
     try (Session session = HibernateSessionManager.getSession()) {
-      transaction = session.beginTransaction();
+      Transaction transaction = session.beginTransaction();
 
       String tableName = request.getTableName();
 
@@ -91,52 +98,60 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         return;
       }
 
-      long tableId = table.getId();
+      try {
+        long tableId = table.getId();
 
-      if (request.hasKafkaSource()) {
-        KafkaSourceMessage kafkaMsg = request.getKafkaSource();
-        KafkaSourceEntity existing = findKafkaSource(session, tableId, kafkaMsg.getTopicName(),
-          kafkaMsg.getPartitionNumber());
+        if (request.hasKafkaSource()) {
+          KafkaSourceMessage kafkaMsg = request.getKafkaSource();
+          KafkaSourceEntity existing = findKafkaSource(session, tableId, kafkaMsg.getTopicName(),
+            kafkaMsg.getPartitionNumber());
 
-        if (existing != null) {
-          existing.setTrinoCatalogName(kafkaMsg.getTrinoCatalogName());
-          existing.setTrinoSchemaName(kafkaMsg.getTrinoSchemaName());
-          existing.setStartOffset(kafkaMsg.getStartOffset());
-          existing.setEndOffset(kafkaMsg.getEndOffset());
-          session.merge(existing);
-        } else {
-          KafkaSourceEntity entity = new KafkaSourceEntity(tableId, kafkaMsg.getTrinoCatalogName(),
-            kafkaMsg.getTrinoSchemaName(), kafkaMsg.getStartOffset(), kafkaMsg.getEndOffset(),
-            kafkaMsg.getPartitionNumber(), kafkaMsg.getTopicName());
-          session.persist(entity);
+          if (existing != null) {
+            existing.setTrinoCatalogName(kafkaMsg.getTrinoCatalogName());
+            existing.setTrinoSchemaName(kafkaMsg.getTrinoSchemaName());
+            existing.setStartOffset(kafkaMsg.getStartOffset());
+            existing.setEndOffset(kafkaMsg.getEndOffset());
+            session.merge(existing);
+          } else {
+            KafkaSourceEntity entity = new KafkaSourceEntity(tableId, kafkaMsg.getTrinoCatalogName(),
+              kafkaMsg.getTrinoSchemaName(), kafkaMsg.getStartOffset(), kafkaMsg.getEndOffset(),
+              kafkaMsg.getPartitionNumber(), kafkaMsg.getTopicName());
+            session.persist(entity);
+          }
+        } else if (request.hasIcebergSource()) {
+          IcebergSourceMessage icebergMsg = request.getIcebergSource();
+          IcebergSourceEntity existing = findIcebergSource(session, tableId, icebergMsg.getTableName());
+
+          if (existing != null) {
+            existing.setTrinoCatalogName(icebergMsg.getTrinoCatalogName());
+            existing.setTrinoSchemaName(icebergMsg.getTrinoSchemaName());
+            existing.setReadTimestamp(icebergMsg.getReadTimestamp());
+            session.merge(existing);
+          } else {
+            IcebergSourceEntity entity = new IcebergSourceEntity(tableId, icebergMsg.getTrinoCatalogName(),
+              icebergMsg.getTrinoSchemaName(), icebergMsg.getTableName(), icebergMsg.getReadTimestamp());
+            session.persist(entity);
+          }
         }
-      } else if (request.hasIcebergSource()) {
-        IcebergSourceMessage icebergMsg = request.getIcebergSource();
-        IcebergSourceEntity existing = findIcebergSource(session, tableId, icebergMsg.getTableName());
 
-        if (existing != null) {
-          existing.setTrinoCatalogName(icebergMsg.getTrinoCatalogName());
-          existing.setTrinoSchemaName(icebergMsg.getTrinoSchemaName());
-          existing.setReadTimestamp(icebergMsg.getReadTimestamp());
-          session.merge(existing);
-        } else {
-          IcebergSourceEntity entity = new IcebergSourceEntity(tableId, icebergMsg.getTrinoCatalogName(),
-            icebergMsg.getTrinoSchemaName(), icebergMsg.getTableName(), icebergMsg.getReadTimestamp());
-          session.persist(entity);
+        transaction.commit();
+
+        UpsertSourceResponse response = UpsertSourceResponse.newBuilder().setSuccess(true)
+          .setMessage("Source upserted successfully").build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+      } catch (Exception e) {
+        try {
+          if (transaction.isActive()) {
+            transaction.rollback();
+          }
+        } catch (Exception rollbackEx) {
+          logger.warn("Error rolling back transaction", rollbackEx);
         }
+        responseObserver.onError(e);
       }
-
-      transaction.commit();
-
-      UpsertSourceResponse response = UpsertSourceResponse.newBuilder().setSuccess(true)
-        .setMessage("Source upserted successfully").build();
-
-      responseObserver.onNext(response);
-      responseObserver.onCompleted();
     } catch (Exception e) {
-      if (transaction != null) {
-        transaction.rollback();
-      }
       responseObserver.onError(e);
     }
   }
@@ -178,10 +193,13 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
           .setStartOffset(kafka.getStartOffset()).setEndOffset(kafka.getEndOffset())
           .setPartitionNumber(kafka.getPartitionNumber()).setTopicName(kafka.getTopicName()).build();
 
-        TableSourceMessage sourceMsg = TableSourceMessage.newBuilder().setTableName(tableName)
-          .setKafkaSource(kafkaMsg).build();
+        TableSourceMessage.Builder sourceBuilder = TableSourceMessage.newBuilder().setTableName(tableName)
+          .setKafkaSource(kafkaMsg);
+        if (table.getAvroSchema() != null) {
+          sourceBuilder.setAvroSchema(table.getAvroSchema());
+        }
 
-        responseBuilder.addSources(sourceMsg);
+        responseBuilder.addSources(sourceBuilder.build());
       }
 
       for (IcebergSourceEntity iceberg : icebergSources) {
@@ -190,15 +208,72 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
           .setTrinoSchemaName(iceberg.getTrinoSchemaName()).setTableName(iceberg.getTableName())
           .setReadTimestamp(iceberg.getReadTimestamp()).build();
 
-        TableSourceMessage sourceMsg = TableSourceMessage.newBuilder().setTableName(tableName)
-          .setIcebergSource(icebergMsg).build();
+        TableSourceMessage.Builder sourceBuilder = TableSourceMessage.newBuilder().setTableName(tableName)
+          .setIcebergSource(icebergMsg);
+        if (table.getAvroSchema() != null) {
+          sourceBuilder.setAvroSchema(table.getAvroSchema());
+        }
 
-        responseBuilder.addSources(sourceMsg);
+        responseBuilder.addSources(sourceBuilder.build());
       }
 
       responseObserver.onNext(responseBuilder.build());
       responseObserver.onCompleted();
     } catch (Exception e) {
+      responseObserver.onError(e);
+    }
+  }
+
+  /**
+   * Sets the Avro schema for a DataHarnessTable.
+   *
+   * @param request          The set schema request
+   * @param responseObserver The observer to send the response to
+   */
+  @Override
+  public void setSchema(SetSchemaRequest request, StreamObserver<SetSchemaResponse> responseObserver) {
+    try (Session session = HibernateSessionManager.getSession()) {
+      Transaction transaction = session.beginTransaction();
+
+      String tableName = request.getTableName();
+
+      if (tableName.isEmpty()) {
+        transaction.rollback();
+        responseObserver.onError(new IllegalArgumentException("Table name cannot be null or empty"));
+        return;
+      }
+
+      DataHarnessTable table = findTableByName(session, tableName);
+      if (table == null) {
+        transaction.rollback();
+        responseObserver.onError(new IllegalArgumentException("Table not found: " + tableName));
+        return;
+      }
+
+      try {
+        String avroSchema = request.hasAvroSchema() ? request.getAvroSchema() : null;
+        table.setAvroSchema(avroSchema);
+        session.merge(table);
+        transaction.commit();
+
+        SetSchemaResponse response = SetSchemaResponse.newBuilder().setSuccess(true)
+          .setMessage("Schema set successfully").build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+      } catch (Exception e) {
+        try {
+          if (transaction.isActive()) {
+            transaction.rollback();
+          }
+        } catch (Exception rollbackEx) {
+          logger.warn("Error rolling back transaction", rollbackEx);
+        }
+        logger.error("Error setting schema", e);
+        responseObserver.onError(e);
+      }
+    } catch (Exception e) {
+      logger.error("Error setting schema - session failure", e);
       responseObserver.onError(e);
     }
   }

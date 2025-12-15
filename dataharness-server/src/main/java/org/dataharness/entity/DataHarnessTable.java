@@ -20,6 +20,9 @@ public class DataHarnessTable {
   @Column(nullable = false, unique = true)
   private String name;
 
+  @Column(nullable = true, columnDefinition = "TEXT")
+  private String avroSchema;
+
   public DataHarnessTable() {
   }
 
@@ -41,5 +44,13 @@ public class DataHarnessTable {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public String getAvroSchema() {
+    return avroSchema;
+  }
+
+  public void setAvroSchema(String avroSchema) {
+    this.avroSchema = avroSchema;
   }
 }

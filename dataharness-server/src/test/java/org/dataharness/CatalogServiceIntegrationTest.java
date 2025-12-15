@@ -233,4 +233,99 @@ public class CatalogServiceIntegrationTest {
     assertThat(response).isNotNull();
     assertThat(response.getTableNamesList()).isNotNull();
   }
+
+  @Test
+  public void testSetSchema() {
+    String tableName = "test responsetable responseavro";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String avroSchemaString = "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}";
+
+    SetSchemaRequest request = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setAvroSchema(avroSchemaString)
+      .build();
+
+    SetSchemaResponse response = stub.setSchema(request);
+
+    assertThat(response.getSuccess()).isTrue();
+    assertThat(response.getMessage()).isEqualTo("Schema set successfully");
+  }
+
+  @Test
+  public void testSetSchemaAndFetchSources() {
+    String tableName = "test responsetable responseavro responsefetch";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String avroSchemaString = "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}";
+
+    SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setAvroSchema(avroSchemaString)
+      .build();
+    stub.setSchema(schemaRequest);
+
+    KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+      .setTrinoCatalogName("trino responsecatalog")
+      .setTrinoSchemaName("schema1")
+      .setStartOffset(0)
+      .setEndOffset(100)
+      .setPartitionNumber(0)
+      .setTopicName("topic1")
+      .build();
+
+    UpsertSourceRequest upsertRequest = UpsertSourceRequest.newBuilder()
+      .setTableName(tableName)
+      .setKafkaSource(kafkaSource)
+      .build();
+    stub.upsertSource(upsertRequest);
+
+    FetchSourcesRequest fetchRequest = FetchSourcesRequest.newBuilder().setTableName(tableName).build();
+    FetchSourcesResponse response = stub.fetchSources(fetchRequest);
+
+    assertThat(response.getSourcesCount()).isEqualTo(1);
+    TableSourceMessage source = response.getSourcesList().get(0);
+    assertThat(source.hasAvroSchema()).isTrue();
+    assertThat(source.getAvroSchema()).isEqualTo(avroSchemaString);
+  }
+
+  @Test
+  public void testSetSchemaWithNullValue() {
+    String tableName = "test responsetable responseauroschema responsenull";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String avroSchemaString = "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}";
+
+    SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setAvroSchema(avroSchemaString)
+      .build();
+    stub.setSchema(schemaRequest);
+
+    SetSchemaRequest clearRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .build();
+    SetSchemaResponse clearResponse = stub.setSchema(clearRequest);
+
+    assertThat(clearResponse.getSuccess()).isTrue();
+
+    FetchSourcesRequest fetchRequest = FetchSourcesRequest.newBuilder().setTableName(tableName).build();
+    FetchSourcesResponse fetchResponse = stub.fetchSources(fetchRequest);
+
+    assertThat(fetchResponse.getSourcesCount()).isEqualTo(0);
+  }
+
+  @Test
+  public void testSetSchemaTableNotFound() {
+    SetSchemaRequest request = SetSchemaRequest.newBuilder()
+      .setTableName("nonexistent responsetable")
+      .setAvroSchema("{\"type\": \"record\"}")
+      .build();
+
+    assertThatThrownBy(() -> stub.setSchema(request))
+      .isInstanceOf(StatusRuntimeException.class);
+  }
 }

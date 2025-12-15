@@ -240,6 +240,16 @@ public class DataPopulator {
       var icebergSourceResponse = stub.upsertSource(icebergSourceRequest);
       logger.info("Registered Iceberg source: {}", icebergSourceResponse.getMessage());
 
+      String avroSchemaString = "{\"type\": \"record\", \"name\": \"TestMessage\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}, {\"name\": \"name\", \"type\": \"string\"}]}";
+
+      SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setAvroSchema(avroSchemaString)
+        .build();
+
+      var schemaResponse = stub.setSchema(schemaRequest);
+      logger.info("Set schema: {}", schemaResponse.getMessage());
+
       fetchAndValidateSources(stub);
 
       logger.info("=== Data Harness Bootstrap Complete ===");
@@ -265,13 +275,19 @@ public class DataPopulator {
       if (source.hasKafkaSource()) {
         kafkaCount++;
         KafkaSourceMessage kafkaSource = source.getKafkaSource();
-        logger.info("Kafka Source {}: topic={}, startOffset={}, endOffset={}",
+        logger.info("Kafka Source {}: topic={}, startOffset={}, endOffset={}", 
           kafkaCount, kafkaSource.getTopicName(), kafkaSource.getStartOffset(), kafkaSource.getEndOffset());
+        if (source.hasAvroSchema()) {
+          logger.info("  Avro Schema: {}", source.getAvroSchema());
+        }
       } else if (source.hasIcebergSource()) {
         icebergCount++;
         IcebergSourceMessage icebergSource = source.getIcebergSource();
         logger.info("Iceberg Source {}: table={}, snapshotId={}",
           icebergCount, icebergSource.getTableName(), icebergSource.getReadTimestamp());
+        if (source.hasAvroSchema()) {
+          logger.info("  Avro Schema: {}", source.getAvroSchema());
+        }
       }
     }
 
