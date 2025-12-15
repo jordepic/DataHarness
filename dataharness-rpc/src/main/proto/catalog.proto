@@ -9,7 +9,7 @@ option java_outer_classname = "CatalogProto";
 service CatalogService {
   rpc CreateTable(CreateTableRequest) returns (CreateTableResponse) {}
   rpc UpsertSource(UpsertSourceRequest) returns (UpsertSourceResponse) {}
-  rpc FetchSources(FetchSourcesRequest) returns (FetchSourcesResponse) {}
+  rpc LoadTable(LoadTableRequest) returns (LoadTableResponse) {}
   rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
   rpc SetSchema(SetSchemaRequest) returns (SetSchemaResponse) {}
 }
@@ -37,12 +37,13 @@ message UpsertSourceResponse {
   string message = 2;
 }
 
-message FetchSourcesRequest {
+message LoadTableRequest {
   string table_name = 1;
 }
 
-message FetchSourcesResponse {
-  repeated TableSourceMessage sources = 1;
+message LoadTableResponse {
+  optional string schema = 1;
+  repeated TableSourceMessage sources = 2;
 }
 
 message KafkaSourceMessage {
@@ -67,7 +68,6 @@ message TableSourceMessage {
     KafkaSourceMessage kafka_source = 2;
     IcebergSourceMessage iceberg_source = 3;
   }
-  optional string avro_schema = 4;
 }
 
 message SetSchemaRequest {

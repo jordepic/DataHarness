@@ -122,8 +122,8 @@ public class CatalogServiceIntegrationTest {
   }
 
   @Test
-  public void testFetchSources() {
-    String tableName = "test responsetable responsefetch";
+  public void testLoadTable() {
+    String tableName = "test responsetable responseload";
     CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
     CreateTableResponse tableResponse = stub.createTable(tableRequest);
 
@@ -135,41 +135,33 @@ public class CatalogServiceIntegrationTest {
       .setKafkaSource(kafkaSource).build();
     stub.upsertSource(upsertRequest1);
 
-    IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
-      .setTrinoCatalogName("trino responsecatalog responseiceberg").setTrinoSchemaName("schema2")
-      .setTableName("iceberg responsetable1").setReadTimestamp(12345L).build();
+    String avroSchemaString = "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}";
+    SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setAvroSchema(avroSchemaString)
+      .build();
+    stub.setSchema(schemaRequest);
 
-    UpsertSourceRequest upsertRequest2 = UpsertSourceRequest.newBuilder().setTableName(tableName)
-      .setIcebergSource(icebergSource).build();
-    stub.upsertSource(upsertRequest2);
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
 
-    FetchSourcesRequest fetchRequest = FetchSourcesRequest.newBuilder().setTableName(tableName).build();
-
-    FetchSourcesResponse response = stub.fetchSources(fetchRequest);
-
-    assertThat(response.getSourcesCount()).isEqualTo(2);
-
-    TableSourceMessage source1 = response.getSourcesList().get(0);
-    assertThat(source1.hasKafkaSource()).isTrue();
-    assertThat(source1.getTableName()).isEqualTo(tableName);
-    assertThat(source1.getKafkaSource().getTopicName()).isEqualTo("topic1");
-
-    TableSourceMessage source2 = response.getSourcesList().get(1);
-    assertThat(source2.hasIcebergSource()).isTrue();
-    assertThat(source2.getTableName()).isEqualTo(tableName);
-    assertThat(source2.getIcebergSource().getTableName()).isEqualTo("iceberg responsetable1");
+    assertThat(response.hasSchema()).isTrue();
+    assertThat(response.getSchema()).isEqualTo(avroSchemaString);
+    assertThat(response.getSourcesCount()).isEqualTo(1);
+    assertThat(response.getSourcesList().get(0).hasKafkaSource()).isTrue();
+    assertThat(response.getSourcesList().get(0).getTableName()).isEqualTo(tableName);
   }
 
   @Test
-  public void testFetchSourcesEmptyTable() {
-    String tableName = "test responsetable responseempty";
+  public void testLoadTableWithoutSchema() {
+    String tableName = "test responsetable responsenoschema";
     CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
     CreateTableResponse tableResponse = stub.createTable(tableRequest);
 
-    FetchSourcesRequest fetchRequest = FetchSourcesRequest.newBuilder().setTableName(tableName).build();
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
 
-    FetchSourcesResponse response = stub.fetchSources(fetchRequest);
-
+    assertThat(response.hasSchema()).isFalse();
     assertThat(response.getSourcesCount()).isEqualTo(0);
   }
 
@@ -195,17 +187,10 @@ public class CatalogServiceIntegrationTest {
       .setKafkaSource(kafkaSource2).build();
     stub.upsertSource(request2);
 
-    FetchSourcesRequest fetchRequest = FetchSourcesRequest.newBuilder().setTableName(tableName).build();
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
 
-    FetchSourcesResponse response = stub.fetchSources(fetchRequest);
-
-    assertThat(response.getSourcesCount()).isEqualTo(1);
-    TableSourceMessage source = response.getSourcesList().get(0);
-    assertThat(source.getTableName()).isEqualTo(tableName);
-    assertThat(source.getKafkaSource().getTrinoCatalogName()).isEqualTo("catalog responsev2");
-    assertThat(source.getKafkaSource().getTrinoSchemaName()).isEqualTo("schema responsev2");
-    assertThat(source.getKafkaSource().getStartOffset()).isEqualTo(100);
-    assertThat(source.getKafkaSource().getEndOffset()).isEqualTo(200);
+    assertThat(response.hasSchema()).isFalse();
   }
 
   @Test
@@ -282,13 +267,11 @@ public class CatalogServiceIntegrationTest {
       .build();
     stub.upsertSource(upsertRequest);
 
-    FetchSourcesRequest fetchRequest = FetchSourcesRequest.newBuilder().setTableName(tableName).build();
-    FetchSourcesResponse response = stub.fetchSources(fetchRequest);
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
 
-    assertThat(response.getSourcesCount()).isEqualTo(1);
-    TableSourceMessage source = response.getSourcesList().get(0);
-    assertThat(source.hasAvroSchema()).isTrue();
-    assertThat(source.getAvroSchema()).isEqualTo(avroSchemaString);
+    assertThat(response.hasSchema()).isTrue();
+    assertThat(response.getSchema()).isEqualTo(avroSchemaString);
   }
 
   @Test
@@ -312,10 +295,11 @@ public class CatalogServiceIntegrationTest {
 
     assertThat(clearResponse.getSuccess()).isTrue();
 
-    FetchSourcesRequest fetchRequest = FetchSourcesRequest.newBuilder().setTableName(tableName).build();
-    FetchSourcesResponse fetchResponse = stub.fetchSources(fetchRequest);
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse loadResponse = stub.loadTable(loadRequest);
 
-    assertThat(fetchResponse.getSourcesCount()).isEqualTo(0);
+    assertThat(loadResponse.hasSchema()).isFalse();
+    assertThat(loadResponse.getSourcesCount()).isEqualTo(0);
   }
 
   @Test

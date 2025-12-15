@@ -157,13 +157,13 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   }
 
   /**
-   * Fetches all Kafka and Iceberg sources for a given data harness table name.
+   * Loads a table with its schema and sources for a given data harness table name.
    *
-   * @param request          The fetch sources request
+   * @param request          The load table request
    * @param responseObserver The observer to send the response to
    */
   @Override
-  public void fetchSources(FetchSourcesRequest request, StreamObserver<FetchSourcesResponse> responseObserver) {
+  public void loadTable(LoadTableRequest request, StreamObserver<LoadTableResponse> responseObserver) {
 
     try (Session session = HibernateSessionManager.getSession()) {
 
@@ -185,7 +185,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
       List<KafkaSourceEntity> kafkaSources = findAllKafkaSources(session, tableId);
       List<IcebergSourceEntity> icebergSources = findAllIcebergSources(session, tableId);
 
-      FetchSourcesResponse.Builder responseBuilder = FetchSourcesResponse.newBuilder();
+      LoadTableResponse.Builder responseBuilder = LoadTableResponse.newBuilder();
+      if (table.getAvroSchema() != null) {
+        responseBuilder.setSchema(table.getAvroSchema());
+      }
 
       for (KafkaSourceEntity kafka : kafkaSources) {
         KafkaSourceMessage kafkaMsg = KafkaSourceMessage.newBuilder()
@@ -193,13 +196,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
           .setStartOffset(kafka.getStartOffset()).setEndOffset(kafka.getEndOffset())
           .setPartitionNumber(kafka.getPartitionNumber()).setTopicName(kafka.getTopicName()).build();
 
-        TableSourceMessage.Builder sourceBuilder = TableSourceMessage.newBuilder().setTableName(tableName)
-          .setKafkaSource(kafkaMsg);
-        if (table.getAvroSchema() != null) {
-          sourceBuilder.setAvroSchema(table.getAvroSchema());
-        }
+        TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
+          .setKafkaSource(kafkaMsg).build();
 
-        responseBuilder.addSources(sourceBuilder.build());
+        responseBuilder.addSources(sourceMessage);
       }
 
       for (IcebergSourceEntity iceberg : icebergSources) {
@@ -208,13 +208,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
           .setTrinoSchemaName(iceberg.getTrinoSchemaName()).setTableName(iceberg.getTableName())
           .setReadTimestamp(iceberg.getReadTimestamp()).build();
 
-        TableSourceMessage.Builder sourceBuilder = TableSourceMessage.newBuilder().setTableName(tableName)
-          .setIcebergSource(icebergMsg);
-        if (table.getAvroSchema() != null) {
-          sourceBuilder.setAvroSchema(table.getAvroSchema());
-        }
+        TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
+          .setIcebergSource(icebergMsg).build();
 
-        responseBuilder.addSources(sourceBuilder.build());
+        responseBuilder.addSources(sourceMessage);
       }
 
       responseObserver.onNext(responseBuilder.build());

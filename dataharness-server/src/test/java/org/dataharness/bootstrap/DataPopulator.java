@@ -259,42 +259,19 @@ public class DataPopulator {
   }
 
   private void fetchAndValidateSources(CatalogServiceGrpc.CatalogServiceBlockingStub stub) throws Exception {
-    logger.info("=== Fetching and Validating Sources ===");
+    logger.info("=== Loading and Validating Table ===");
 
-    FetchSourcesRequest request = FetchSourcesRequest.newBuilder()
+    LoadTableRequest request = LoadTableRequest.newBuilder()
       .setTableName(DATA_HARNESS_TABLE)
       .build();
 
-    FetchSourcesResponse response = stub.fetchSources(request);
-    logger.info("Fetched sources for table '{}': {} source(s)", DATA_HARNESS_TABLE, response.getSourcesCount());
-
-    int kafkaCount = 0;
-    int icebergCount = 0;
-
-    for (TableSourceMessage source : response.getSourcesList()) {
-      if (source.hasKafkaSource()) {
-        kafkaCount++;
-        KafkaSourceMessage kafkaSource = source.getKafkaSource();
-        logger.info("Kafka Source {}: topic={}, startOffset={}, endOffset={}", 
-          kafkaCount, kafkaSource.getTopicName(), kafkaSource.getStartOffset(), kafkaSource.getEndOffset());
-        if (source.hasAvroSchema()) {
-          logger.info("  Avro Schema: {}", source.getAvroSchema());
-        }
-      } else if (source.hasIcebergSource()) {
-        icebergCount++;
-        IcebergSourceMessage icebergSource = source.getIcebergSource();
-        logger.info("Iceberg Source {}: table={}, snapshotId={}",
-          icebergCount, icebergSource.getTableName(), icebergSource.getReadTimestamp());
-        if (source.hasAvroSchema()) {
-          logger.info("  Avro Schema: {}", source.getAvroSchema());
-        }
-      }
-    }
-
-    if (kafkaCount > 0 && icebergCount > 0) {
-      logger.info("✓ Successfully retrieved both Kafka and Iceberg sources");
+    LoadTableResponse response = stub.loadTable(request);
+    
+    if (response.hasSchema()) {
+      logger.info("Loaded table '{}' with schema: {}", DATA_HARNESS_TABLE, response.getSchema());
+      logger.info("✓ Successfully loaded table schema");
     } else {
-      logger.warn("✗ Missing expected sources: Kafka={}, Iceberg={}", kafkaCount, icebergCount);
+      logger.warn("✗ Table '{}' has no schema", DATA_HARNESS_TABLE);
     }
   }
 }
