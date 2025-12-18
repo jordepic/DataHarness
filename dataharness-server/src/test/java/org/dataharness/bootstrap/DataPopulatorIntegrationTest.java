@@ -10,10 +10,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.reflect.ReflectData;
-import org.apache.iceberg.DataFile;
-import org.apache.iceberg.DataFiles;
-import org.apache.iceberg.FileFormat;
-import org.apache.iceberg.Table;
+import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.GenericAppenderFactory;
@@ -23,7 +20,9 @@ import org.apache.iceberg.io.FileAppenderFactory;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.types.Types;
-import org.apache.iceberg.SchemaParser;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -34,25 +33,116 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.dataharness.proto.*;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-public class DataPopulator {
-  private static final Logger logger = LoggerFactory.getLogger(DataPopulator.class);
+/**
+ * Integration test that populates Kafka, Iceberg, and DataHarness with test data.
+ * <p>
+ * Before running this test, ensure that the required services are running by executing:
+ * ./start_images.sh
+ * <p>
+ * This test is idempotent and will clean up existing data before populating new data.
+ */
+public class DataPopulatorIntegrationTest {
   private static final String BOOTSTRAP_SERVERS = "localhost:9092";
   private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
   private static final String TOPIC = "kafka_test";
   private static final String DATA_HARNESS_TABLE = "bootstrap";
   private static final String ICEBERG_TABLE_NAME = "iceberg_test";
 
-  record KafkaPopulationResult(String avroSchema, long messageCount) {
+  @Test
+  public void bootstrapDataHarness() throws Exception {
+    deleteKafkaTopic();
+    deleteDataHarness();
 
+    KafkaPopulationResult kafkaResult = populateKafka();
+    IcebergPopulationResult icebergResult = populateIceberg();
+
+    ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
+    CatalogServiceGrpc.CatalogServiceBlockingStub stub = CatalogServiceGrpc.newBlockingStub(channel);
+
+    try {
+      CreateTableRequest createTableRequest = CreateTableRequest.newBuilder()
+        .setName(DATA_HARNESS_TABLE)
+        .build();
+
+      stub.createTable(createTableRequest);
+
+      KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+        .setTrinoCatalogName("kafka")
+        .setTrinoSchemaName("default")
+        .setTopicName(TOPIC)
+        .setStartOffset(0)
+        .setEndOffset(kafkaResult.messageCount)
+        .setPartitionNumber(0)
+        .build();
+
+      UpsertSourceRequest kafkaSourceRequest = UpsertSourceRequest.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setKafkaSource(kafkaSource)
+        .build();
+
+      stub.upsertSource(kafkaSourceRequest);
+
+      IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+        .setTrinoCatalogName("iceberg")
+        .setTrinoSchemaName("default")
+        .setTableName(ICEBERG_TABLE_NAME)
+        .setReadTimestamp(icebergResult.snapshotId)
+        .build();
+
+      UpsertSourceRequest icebergSourceRequest = UpsertSourceRequest.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setIcebergSource(icebergSource)
+        .build();
+
+      stub.upsertSource(icebergSourceRequest);
+
+      SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setAvroSchema(kafkaResult.avroSchema)
+        .setIcebergSchema(icebergResult.icebergSchema)
+        .build();
+
+      stub.setSchema(schemaRequest);
+
+      fetchAndValidateSources(stub);
+    } finally {
+      channel.shutdown();
+    }
   }
 
-  record IcebergPopulationResult(String icebergSchema, long snapshotId) {
+  private void deleteKafkaTopic() throws Exception {
+    Properties props = new Properties();
+    props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
 
+    try (AdminClient admin = AdminClient.create(props)) {
+      ListTopicsResult topics = admin.listTopics();
+      if (topics.names().get().contains(TOPIC)) {
+        admin.deleteTopics(Collections.singleton(TOPIC)).all().get();
+      }
+    } catch (Exception e) {
+      // Topic may not exist, continue
+    }
+  }
+
+  private void deleteDataHarness() throws Exception {
+    try {
+      ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
+      CatalogServiceGrpc.CatalogServiceBlockingStub stub = CatalogServiceGrpc.newBlockingStub(channel);
+
+      try {
+        DropTableRequest dropRequest = DropTableRequest.newBuilder()
+          .setTableName(DATA_HARNESS_TABLE)
+          .build();
+        stub.dropTable(dropRequest);
+      } finally {
+        channel.shutdown();
+      }
+    } catch (Exception e) {
+      // Table may not exist, continue
+    }
   }
 
   public KafkaPopulationResult populateKafka() throws Exception {
@@ -62,8 +152,6 @@ public class DataPopulator {
     String avroSchemaJson = schema.toString();
 
     client.register(TOPIC + "-value", schema);
-    logger.info("Schema registered for topic: {}", TOPIC);
-    logger.info("Avro schema: {}", avroSchemaJson);
 
     Properties producerProps = new Properties();
     producerProps.put("bootstrap.servers", BOOTSTRAP_SERVERS);
@@ -83,7 +171,6 @@ public class DataPopulator {
         record.put("name", msg.name());
 
         producer.send(new ProducerRecord<>(TOPIC, String.valueOf(msg.id()), record));
-        logger.info("Sent message: id={}, name={}", msg.id(), msg.name());
       }
       producer.flush();
     }
@@ -102,13 +189,9 @@ public class DataPopulator {
       consumer.subscribe(Collections.singletonList(TOPIC));
 
       ConsumerRecords<String, GenericRecord> records = consumer.poll(10000);
-      logger.info("Read {} messages from topic", records.count());
 
       for (ConsumerRecord<String, GenericRecord> record : records) {
         GenericRecord value = record.value();
-        int id = (int) value.get("id");
-        String name = value.get("name").toString();
-        logger.info("Read message: id={}, name={}", id, name);
       }
     }
 
@@ -121,33 +204,27 @@ public class DataPopulator {
       Types.NestedField.required(1, "id", Types.IntegerType.get()),
       Types.NestedField.required(2, "name", Types.StringType.get())
     );
-    logger.info("Created Iceberg schema: {}", icebergSchema);
 
     String icebergSchemaJson = SchemaParser.toJson(icebergSchema);
-    logger.info("Iceberg schema as JSON: {}", icebergSchemaJson);
 
     Map<String, String> properties = new HashMap<>();
     properties.put("uri", "http://localhost:9001/iceberg");
 
     RESTCatalog catalog = new RESTCatalog();
     catalog.initialize("rest", properties);
-    logger.info("Initialized RESTCatalog");
 
     Namespace namespace = Namespace.of("default");
     if (!catalog.namespaceExists(namespace)) {
       catalog.createNamespace(namespace);
-      logger.info("Created namespace: default");
     }
 
     TableIdentifier tableId = TableIdentifier.of(namespace, ICEBERG_TABLE_NAME);
 
     if (catalog.tableExists(tableId)) {
       catalog.dropTable(tableId);
-      logger.info("Dropped existing table");
     }
 
     Table table = catalog.createTable(tableId, icebergSchema);
-    logger.info("Created table: default.{} with schema: {}", ICEBERG_TABLE_NAME, icebergSchema);
 
     List<Record> records = new ArrayList<>();
 
@@ -166,13 +243,13 @@ public class DataPopulator {
     record3.setField("name", "Charlie");
     records.add(record3);
 
-    logger.info("Created {} records with schema", records.size());
-    for (Record record : records) {
-      logger.info("Record: id={}, name={}", record.getField("id"), record.getField("name"));
+    String fileLocation = "/tmp/data.parquet";
+    try {
+      table.io().deleteFile(fileLocation);
+    } catch (Exception e) {
+      // File may not exist
     }
 
-    String fileLocation = "/tmp/data.parquet";
-    table.io().deleteFile(fileLocation);
     OutputFile outputFile = table.io().newOutputFile(fileLocation);
 
     FileAppenderFactory<Record> factory = new GenericAppenderFactory(table.schema());
@@ -194,87 +271,18 @@ public class DataPopulator {
       .appendFile(dataFile)
       .commit();
 
-    logger.info("Successfully wrote {} records to Iceberg table", records.size());
-
     long snapshotId = table.currentSnapshot().snapshotId();
-    logger.info("{}", table.currentSnapshot().summary().get("added-records"));
+
+    try {
+      table.io().deleteFile(fileLocation);
+    } catch (Exception e) {
+      // File cleanup, ignore errors
+    }
 
     return new IcebergPopulationResult(icebergSchemaJson, snapshotId);
   }
 
-  @Test
-  public void bootstrapDataHarness() throws Exception {
-    logger.info("=== Starting Data Harness Bootstrap ===");
-
-    KafkaPopulationResult kafkaResult = populateKafka();
-    logger.info("Kafka population complete");
-
-    IcebergPopulationResult icebergResult = populateIceberg();
-    logger.info("Iceberg population complete");
-
-    ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
-    CatalogServiceGrpc.CatalogServiceBlockingStub stub = CatalogServiceGrpc.newBlockingStub(channel);
-
-    try {
-      CreateTableRequest createTableRequest = CreateTableRequest.newBuilder()
-        .setName(DATA_HARNESS_TABLE)
-        .build();
-
-      var createTableResponse = stub.createTable(createTableRequest);
-      logger.info("Created table '{}': {}", DATA_HARNESS_TABLE, createTableResponse.getMessage());
-
-      KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
-        .setTrinoCatalogName("kafka")
-        .setTrinoSchemaName("default")
-        .setTopicName(TOPIC)
-        .setStartOffset(0)
-        .setEndOffset(kafkaResult.messageCount)
-        .setPartitionNumber(0)
-        .build();
-
-      UpsertSourceRequest kafkaSourceRequest = UpsertSourceRequest.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setKafkaSource(kafkaSource)
-        .build();
-
-      var kafkaSourceResponse = stub.upsertSource(kafkaSourceRequest);
-      logger.info("Registered Kafka source: {}", kafkaSourceResponse.getMessage());
-
-      IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
-        .setTrinoCatalogName("iceberg")
-        .setTrinoSchemaName("default")
-        .setTableName(ICEBERG_TABLE_NAME)
-        .setReadTimestamp(icebergResult.snapshotId)
-        .build();
-
-      UpsertSourceRequest icebergSourceRequest = UpsertSourceRequest.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setIcebergSource(icebergSource)
-        .build();
-
-      var icebergSourceResponse = stub.upsertSource(icebergSourceRequest);
-      logger.info("Registered Iceberg source: {}", icebergSourceResponse.getMessage());
-
-      SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setAvroSchema(kafkaResult.avroSchema)
-        .setIcebergSchema(icebergResult.icebergSchema)
-        .build();
-
-      var schemaResponse = stub.setSchema(schemaRequest);
-      logger.info("Set schema: {}", schemaResponse.getMessage());
-
-      fetchAndValidateSources(stub);
-
-      logger.info("=== Data Harness Bootstrap Complete ===");
-    } finally {
-      channel.shutdown();
-    }
-  }
-
   private void fetchAndValidateSources(CatalogServiceGrpc.CatalogServiceBlockingStub stub) throws Exception {
-    logger.info("=== Loading and Validating Table ===");
-
     LoadTableRequest request = LoadTableRequest.newBuilder()
       .setTableName(DATA_HARNESS_TABLE)
       .build();
@@ -283,28 +291,24 @@ public class DataPopulator {
 
     int schemaCount = 0;
     if (response.hasAvroSchema()) {
-      logger.info("Loaded table '{}' with Avro schema: {}", DATA_HARNESS_TABLE, response.getAvroSchema());
       schemaCount++;
     }
     if (response.hasIcebergSchema()) {
-      logger.info("Loaded table '{}' with Iceberg schema: {}", DATA_HARNESS_TABLE, response.getIcebergSchema());
       schemaCount++;
     }
 
-    logger.info("Sources count: {}", response.getSourcesCount());
     for (TableSourceMessage source : response.getSourcesList()) {
       if (source.hasKafkaSource()) {
-        logger.info("  - Kafka source: topic={}, partition={}", source.getKafkaSource().getTopicName(),
-          source.getKafkaSource().getPartitionNumber());
       } else if (source.hasIcebergSource()) {
-        logger.info("  - Iceberg source: table={}", source.getIcebergSource().getTableName());
       }
     }
+  }
 
-    if (schemaCount > 0) {
-      logger.info("✓ Successfully loaded table with {} schema(s)", schemaCount);
-    } else {
-      logger.warn("✗ Table '{}' has no schema", DATA_HARNESS_TABLE);
-    }
+  record KafkaPopulationResult(String avroSchema, long messageCount) {
+
+  }
+
+  record IcebergPopulationResult(String icebergSchema, long snapshotId) {
+
   }
 }
