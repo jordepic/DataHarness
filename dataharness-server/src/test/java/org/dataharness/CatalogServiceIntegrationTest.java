@@ -412,4 +412,84 @@ public class CatalogServiceIntegrationTest {
     assertThat(response.hasIcebergSchema()).isTrue();
     assertThat(response.getIcebergSchema()).isEqualTo(icebergSchemaString);
   }
+
+  @Test
+  public void testDropTable() {
+    String tableName = "test responsetable responsedrop";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    CreateTableResponse createResponse = stub.createTable(tableRequest);
+    assertThat(createResponse.getSuccess()).isTrue();
+
+    DropTableRequest dropRequest = DropTableRequest.newBuilder().setTableName(tableName).build();
+    DropTableResponse dropResponse = stub.dropTable(dropRequest);
+
+    assertThat(dropResponse.getSuccess()).isTrue();
+    assertThat(dropResponse.getMessage()).isEqualTo("Table dropped successfully");
+
+    assertThatThrownBy(() -> stub.loadTable(LoadTableRequest.newBuilder().setTableName(tableName).build()))
+      .isInstanceOf(StatusRuntimeException.class);
+  }
+
+  @Test
+  public void testDropTableWithSources() {
+    String tableName = "test responsetable responsedrop responsesources";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+      .setTrinoCatalogName("trino responsecatalog")
+      .setTrinoSchemaName("schema1")
+      .setStartOffset(0)
+      .setEndOffset(100)
+      .setPartitionNumber(0)
+      .setTopicName("topic1")
+      .build();
+
+    UpsertSourceRequest kafkaRequest = UpsertSourceRequest.newBuilder()
+      .setTableName(tableName)
+      .setKafkaSource(kafkaSource)
+      .build();
+    stub.upsertSource(kafkaRequest);
+
+    IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+      .setTrinoCatalogName("trino responsecatalog")
+      .setTrinoSchemaName("schema1")
+      .setTableName("iceberg responsetable")
+      .setReadTimestamp(System.currentTimeMillis())
+      .build();
+
+    UpsertSourceRequest icebergRequest = UpsertSourceRequest.newBuilder()
+      .setTableName(tableName)
+      .setIcebergSource(icebergSource)
+      .build();
+    stub.upsertSource(icebergRequest);
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse loadResponse = stub.loadTable(loadRequest);
+    assertThat(loadResponse.getSourcesCount()).isEqualTo(2);
+
+    DropTableRequest dropRequest = DropTableRequest.newBuilder().setTableName(tableName).build();
+    DropTableResponse dropResponse = stub.dropTable(dropRequest);
+
+    assertThat(dropResponse.getSuccess()).isTrue();
+
+    assertThatThrownBy(() -> stub.loadTable(LoadTableRequest.newBuilder().setTableName(tableName).build()))
+      .isInstanceOf(StatusRuntimeException.class);
+  }
+
+  @Test
+  public void testDropTableNotFound() {
+    DropTableRequest dropRequest = DropTableRequest.newBuilder().setTableName("nonexistent responsetable").build();
+
+    assertThatThrownBy(() -> stub.dropTable(dropRequest))
+      .isInstanceOf(StatusRuntimeException.class);
+  }
+
+  @Test
+  public void testDropTableWithEmptyName() {
+    DropTableRequest dropRequest = DropTableRequest.newBuilder().setTableName("").build();
+
+    assertThatThrownBy(() -> stub.dropTable(dropRequest))
+      .isInstanceOf(StatusRuntimeException.class);
+  }
 }

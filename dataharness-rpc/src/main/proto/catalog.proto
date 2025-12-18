@@ -12,6 +12,7 @@ service CatalogService {
   rpc LoadTable(LoadTableRequest) returns (LoadTableResponse) {}
   rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
   rpc SetSchema(SetSchemaRequest) returns (SetSchemaResponse) {}
+  rpc DropTable(DropTableRequest) returns (DropTableResponse) {}
 }
 
 message CreateTableRequest {
@@ -87,4 +88,13 @@ message ListTablesRequest {
 
 message ListTablesResponse {
   repeated string table_names = 1;
+}
+
+message DropTableRequest {
+  string table_name = 1;
+}
+
+message DropTableResponse {
+  bool success = 1;
+  string message = 2;
 }

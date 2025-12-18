@@ -49,6 +49,13 @@ The main service exposed via gRPC with the following RPC methods:
 - Allows associating Avro and/or Iceberg schemas with a DataHarness table
 - Schemas are persisted and returned when loading tables
 
+#### **DropTable**
+
+- **Request**: `DropTableRequest` with table name
+- **Response**: `DropTableResponse` with success status and message
+- Drops a table and all of its associated sources (both Kafka and Iceberg)
+- Performs cascading deletion of all sources linked to the table
+
 ### Data Source Support
 
 #### **Kafka Source**
@@ -147,12 +154,13 @@ Main class: `org.dataharness.Main`
 ## Accomplished Features
 
 - ✅ **Table Creation**: Create and manage DataHarness tables with metadata persistence
+- ✅ **Table Deletion**: Drop tables with cascading deletion of all associated sources
 - ✅ **Kafka Source Integration**: Ingest data from Kafka topics with partition-level offset management
 - ✅ **Iceberg Source Integration**: Query Iceberg tables with time-travel support
 - ✅ **Source Management**: List and manage sources associated with a DataHarness table
 - ✅ **Multi-Schema Support**: Associate both Avro and Iceberg schemas with DataHarness tables for flexible schema management
 - ✅ **Schema Persistence**: Schemas are persisted in the database and returned when loading tables
-- ✅ **gRPC API**: Complete service layer for catalog operations with LoadTable, SetSchema, and source management
+- ✅ **gRPC API**: Complete service layer for catalog operations with CreateTable, DropTable, LoadTable, SetSchema, and source management
 
 ## Roadmap
 

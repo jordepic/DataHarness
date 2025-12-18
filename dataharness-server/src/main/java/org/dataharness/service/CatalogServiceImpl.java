@@ -304,6 +304,69 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     }
   }
 
+  /**
+   * Drops a DataHarnessTable and all of its associated sources.
+   *
+   * @param request          The drop table request
+   * @param responseObserver The observer to send the response to
+   */
+  @Override
+  public void dropTable(DropTableRequest request, StreamObserver<DropTableResponse> responseObserver) {
+    try (Session session = HibernateSessionManager.getSession()) {
+      Transaction transaction = session.beginTransaction();
+
+      String tableName = request.getTableName();
+
+      if (tableName.isEmpty()) {
+        transaction.rollback();
+        responseObserver.onError(new IllegalArgumentException("Table name cannot be null or empty"));
+        return;
+      }
+
+      DataHarnessTable table = findTableByName(session, tableName);
+      if (table == null) {
+        transaction.rollback();
+        responseObserver.onError(new IllegalArgumentException("Table not found: " + tableName));
+        return;
+      }
+
+      try {
+        long tableId = table.getId();
+
+        Query<?> deleteKafkaSources = session.createQuery("DELETE FROM KafkaSourceEntity WHERE tableId = :tableId");
+        deleteKafkaSources.setParameter("tableId", tableId);
+        deleteKafkaSources.executeUpdate();
+
+        Query<?> deleteIcebergSources = session.createQuery("DELETE FROM IcebergSourceEntity WHERE tableId = :tableId");
+        deleteIcebergSources.setParameter("tableId", tableId);
+        deleteIcebergSources.executeUpdate();
+
+        session.remove(table);
+
+        transaction.commit();
+
+        DropTableResponse response = DropTableResponse.newBuilder().setSuccess(true)
+          .setMessage("Table dropped successfully").build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+      } catch (Exception e) {
+        try {
+          if (transaction.isActive()) {
+            transaction.rollback();
+          }
+        } catch (Exception rollbackEx) {
+          logger.warn("Error rolling back transaction", rollbackEx);
+        }
+        logger.error("Error dropping table", e);
+        responseObserver.onError(e);
+      }
+    } catch (Exception e) {
+      logger.error("Error dropping table - session failure", e);
+      responseObserver.onError(e);
+    }
+  }
+
   private DataHarnessTable findTableByName(Session session, String tableName) {
     Query<DataHarnessTable> query = session.createQuery("FROM DataHarnessTable WHERE name = :name",
       DataHarnessTable.class);
