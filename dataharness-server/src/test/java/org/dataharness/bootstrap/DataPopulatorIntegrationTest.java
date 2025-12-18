@@ -78,12 +78,10 @@ public class DataPopulatorIntegrationTest {
         .setPartitionNumber(0)
         .build();
 
-      UpsertSourceRequest kafkaSourceRequest = UpsertSourceRequest.newBuilder()
+      SourceUpdate kafkaSourceUpdate = SourceUpdate.newBuilder()
         .setTableName(DATA_HARNESS_TABLE)
         .setKafkaSource(kafkaSource)
         .build();
-
-      stub.upsertSource(kafkaSourceRequest);
 
       IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
         .setTrinoCatalogName("iceberg")
@@ -92,12 +90,17 @@ public class DataPopulatorIntegrationTest {
         .setReadTimestamp(icebergResult.snapshotId)
         .build();
 
-      UpsertSourceRequest icebergSourceRequest = UpsertSourceRequest.newBuilder()
+      SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
         .setTableName(DATA_HARNESS_TABLE)
         .setIcebergSource(icebergSource)
         .build();
 
-      stub.upsertSource(icebergSourceRequest);
+      UpsertSourcesRequest upsertSourcesRequest = UpsertSourcesRequest.newBuilder()
+        .addSources(kafkaSourceUpdate)
+        .addSources(icebergSourceUpdate)
+        .build();
+
+      stub.upsertSources(upsertSourcesRequest);
 
       SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
         .setTableName(DATA_HARNESS_TABLE)

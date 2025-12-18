@@ -124,13 +124,15 @@ public class CatalogServiceIntegrationTest {
       .setTrinoSchemaName("public").setStartOffset(0).setEndOffset(100).setPartitionNumber(0)
       .setTopicName("test responsetopic").build();
 
-    UpsertSourceRequest request = UpsertSourceRequest.newBuilder().setTableName(tableName)
+    SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource).build();
 
-    UpsertSourceResponse response = stub.upsertSource(request);
+    UpsertSourcesRequest request = UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+
+    UpsertSourcesResponse response = stub.upsertSources(request);
 
     assertThat(response.getSuccess()).isTrue();
-    assertThat(response.getMessage()).isEqualTo("Source upserted successfully");
+    assertThat(response.getMessage()).isEqualTo("Sources upserted successfully");
   }
 
   @Test
@@ -143,13 +145,15 @@ public class CatalogServiceIntegrationTest {
       .setTrinoSchemaName("public").setTableName("iceberg responsetable").setReadTimestamp(System.currentTimeMillis())
       .build();
 
-    UpsertSourceRequest request = UpsertSourceRequest.newBuilder().setTableName(tableName)
+    SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
       .setIcebergSource(icebergSource).build();
 
-    UpsertSourceResponse response = stub.upsertSource(request);
+    UpsertSourcesRequest request = UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+
+    UpsertSourcesResponse response = stub.upsertSources(request);
 
     assertThat(response.getSuccess()).isTrue();
-    assertThat(response.getMessage()).isEqualTo("Source upserted successfully");
+    assertThat(response.getMessage()).isEqualTo("Sources upserted successfully");
   }
 
   @Test
@@ -162,9 +166,10 @@ public class CatalogServiceIntegrationTest {
       .setTrinoSchemaName("schema1").setStartOffset(0).setEndOffset(100).setPartitionNumber(0)
       .setTopicName("topic1").build();
 
-    UpsertSourceRequest upsertRequest1 = UpsertSourceRequest.newBuilder().setTableName(tableName)
+    SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource).build();
-    stub.upsertSource(upsertRequest1);
+    UpsertSourcesRequest upsertRequest = UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+    stub.upsertSources(upsertRequest);
 
     String avroSchemaString = "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}";
     SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
@@ -207,17 +212,19 @@ public class CatalogServiceIntegrationTest {
       .setTrinoSchemaName("schema responsev1").setStartOffset(0).setEndOffset(100).setPartitionNumber(0)
       .setTopicName("test responsetopic").build();
 
-    UpsertSourceRequest request1 = UpsertSourceRequest.newBuilder().setTableName(tableName)
+    SourceUpdate sourceUpdate1 = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource1).build();
-    stub.upsertSource(request1);
+    UpsertSourcesRequest request1 = UpsertSourcesRequest.newBuilder().addSources(sourceUpdate1).build();
+    stub.upsertSources(request1);
 
     KafkaSourceMessage kafkaSource2 = KafkaSourceMessage.newBuilder().setTrinoCatalogName("catalog responsev2")
       .setTrinoSchemaName("schema responsev2").setStartOffset(100).setEndOffset(200).setPartitionNumber(0)
       .setTopicName("test responsetopic").build();
 
-    UpsertSourceRequest request2 = UpsertSourceRequest.newBuilder().setTableName(tableName)
+    SourceUpdate sourceUpdate2 = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource2).build();
-    stub.upsertSource(request2);
+    UpsertSourcesRequest request2 = UpsertSourcesRequest.newBuilder().addSources(sourceUpdate2).build();
+    stub.upsertSources(request2);
 
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse response = stub.loadTable(loadRequest);
@@ -294,11 +301,14 @@ public class CatalogServiceIntegrationTest {
       .setTopicName("topic1")
       .build();
 
-    UpsertSourceRequest upsertRequest = UpsertSourceRequest.newBuilder()
+    SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
       .setTableName(tableName)
       .setKafkaSource(kafkaSource)
       .build();
-    stub.upsertSource(upsertRequest);
+    UpsertSourcesRequest upsertRequest = UpsertSourcesRequest.newBuilder()
+      .addSources(sourceUpdate)
+      .build();
+    stub.upsertSources(upsertRequest);
 
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse response = stub.loadTable(loadRequest);
@@ -445,12 +455,6 @@ public class CatalogServiceIntegrationTest {
       .setTopicName("topic1")
       .build();
 
-    UpsertSourceRequest kafkaRequest = UpsertSourceRequest.newBuilder()
-      .setTableName(tableName)
-      .setKafkaSource(kafkaSource)
-      .build();
-    stub.upsertSource(kafkaRequest);
-
     IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
       .setTrinoCatalogName("trino responsecatalog")
       .setTrinoSchemaName("schema1")
@@ -458,11 +462,21 @@ public class CatalogServiceIntegrationTest {
       .setReadTimestamp(System.currentTimeMillis())
       .build();
 
-    UpsertSourceRequest icebergRequest = UpsertSourceRequest.newBuilder()
+    SourceUpdate kafkaUpdate = SourceUpdate.newBuilder()
+      .setTableName(tableName)
+      .setKafkaSource(kafkaSource)
+      .build();
+
+    SourceUpdate icebergUpdate = SourceUpdate.newBuilder()
       .setTableName(tableName)
       .setIcebergSource(icebergSource)
       .build();
-    stub.upsertSource(icebergRequest);
+
+    UpsertSourcesRequest upsertRequest = UpsertSourcesRequest.newBuilder()
+      .addSources(kafkaUpdate)
+      .addSources(icebergUpdate)
+      .build();
+    stub.upsertSources(upsertRequest);
 
     LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
     LoadTableResponse loadResponse = stub.loadTable(loadRequest);
@@ -491,5 +505,98 @@ public class CatalogServiceIntegrationTest {
 
     assertThatThrownBy(() -> stub.dropTable(dropRequest))
       .isInstanceOf(StatusRuntimeException.class);
+  }
+
+  @Test
+  public void testUpsertMultipleSourcesAtomically() {
+    String table1 = "test responsetable responseatomic1";
+    String table2 = "test responsetable responseatomic2";
+    CreateTableRequest request1 = CreateTableRequest.newBuilder().setName(table1).build();
+    CreateTableRequest request2 = CreateTableRequest.newBuilder().setName(table2).build();
+    stub.createTable(request1);
+    stub.createTable(request2);
+
+    KafkaSourceMessage kafkaSource1 = KafkaSourceMessage.newBuilder()
+      .setTrinoCatalogName("catalog1")
+      .setTrinoSchemaName("schema1")
+      .setStartOffset(0)
+      .setEndOffset(100)
+      .setPartitionNumber(0)
+      .setTopicName("topic1")
+      .build();
+
+    IcebergSourceMessage icebergSource2 = IcebergSourceMessage.newBuilder()
+      .setTrinoCatalogName("catalog2")
+      .setTrinoSchemaName("schema2")
+      .setTableName("iceberg responsetable")
+      .setReadTimestamp(System.currentTimeMillis())
+      .build();
+
+    SourceUpdate update1 = SourceUpdate.newBuilder()
+      .setTableName(table1)
+      .setKafkaSource(kafkaSource1)
+      .build();
+
+    SourceUpdate update2 = SourceUpdate.newBuilder()
+      .setTableName(table2)
+      .setIcebergSource(icebergSource2)
+      .build();
+
+    UpsertSourcesRequest upsertRequest = UpsertSourcesRequest.newBuilder()
+      .addSources(update1)
+      .addSources(update2)
+      .build();
+
+    UpsertSourcesResponse response = stub.upsertSources(upsertRequest);
+
+    assertThat(response.getSuccess()).isTrue();
+
+    LoadTableRequest loadRequest1 = LoadTableRequest.newBuilder().setTableName(table1).build();
+    LoadTableResponse loadResponse1 = stub.loadTable(loadRequest1);
+    assertThat(loadResponse1.getSourcesCount()).isEqualTo(1);
+    assertThat(loadResponse1.getSourcesList().get(0).hasKafkaSource()).isTrue();
+
+    LoadTableRequest loadRequest2 = LoadTableRequest.newBuilder().setTableName(table2).build();
+    LoadTableResponse loadResponse2 = stub.loadTable(loadRequest2);
+    assertThat(loadResponse2.getSourcesCount()).isEqualTo(1);
+    assertThat(loadResponse2.getSourcesList().get(0).hasIcebergSource()).isTrue();
+  }
+
+  @Test
+  public void testUpsertMultipleSourcesAtomicRollback() {
+    String table1 = "test responsetable responseatomic responserollback";
+    stub.createTable(CreateTableRequest.newBuilder().setName(table1).build());
+
+    KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+      .setTrinoCatalogName("catalog")
+      .setTrinoSchemaName("schema")
+      .setStartOffset(0)
+      .setEndOffset(100)
+      .setPartitionNumber(0)
+      .setTopicName("topic")
+      .build();
+
+    SourceUpdate validUpdate = SourceUpdate.newBuilder()
+      .setTableName(table1)
+      .setKafkaSource(kafkaSource)
+      .build();
+
+    SourceUpdate invalidUpdate = SourceUpdate.newBuilder()
+      .setTableName("nonexistent responsetable")
+      .setKafkaSource(kafkaSource)
+      .build();
+
+    UpsertSourcesRequest upsertRequest = UpsertSourcesRequest.newBuilder()
+      .addSources(validUpdate)
+      .addSources(invalidUpdate)
+      .build();
+
+    assertThatThrownBy(() -> stub.upsertSources(upsertRequest))
+      .isInstanceOf(StatusRuntimeException.class);
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(table1).build();
+    LoadTableResponse loadResponse = stub.loadTable(loadRequest);
+
+    assertThat(loadResponse.getSourcesCount()).isEqualTo(0);
   }
 }

@@ -8,7 +8,7 @@ option java_outer_classname = "CatalogProto";
 
 service CatalogService {
   rpc CreateTable(CreateTableRequest) returns (CreateTableResponse) {}
-  rpc UpsertSource(UpsertSourceRequest) returns (UpsertSourceResponse) {}
+  rpc UpsertSources(UpsertSourcesRequest) returns (UpsertSourcesResponse) {}
   rpc LoadTable(LoadTableRequest) returns (LoadTableResponse) {}
   rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
   rpc SetSchema(SetSchemaRequest) returns (SetSchemaResponse) {}
@@ -25,7 +25,11 @@ message CreateTableResponse {
   int64 table_id = 3;
 }
 
-message UpsertSourceRequest {
+message UpsertSourcesRequest {
+  repeated SourceUpdate sources = 1;
+}
+
+message SourceUpdate {
   string table_name = 1;
   oneof source {
     KafkaSourceMessage kafka_source = 2;
@@ -33,7 +37,7 @@ message UpsertSourceRequest {
   }
 }
 
-message UpsertSourceResponse {
+message UpsertSourcesResponse {
   bool success = 1;
   string message = 2;
 }

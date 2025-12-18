@@ -70,74 +70,82 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   }
 
   /**
-   * Upserts a Kafka or Iceberg source into the database. For Kafka sources: uses
-   * (table_id, topic_name, partition_number) as the unique key For Iceberg
-   * sources: uses (table_id, table_name) as the unique key
+   * Upserts multiple Kafka and/or Iceberg sources into the database atomically.
+   * For Kafka sources: uses (table_id, topic_name, partition_number) as the unique key
+   * For Iceberg sources: uses (table_id, table_name) as the unique key
    *
-   * @param request          The upsert source request
+   * @param request          The upsert sources request
    * @param responseObserver The observer to send the response to
    */
   @Override
-  public void upsertSource(UpsertSourceRequest request, StreamObserver<UpsertSourceResponse> responseObserver) {
+  public void upsertSources(UpsertSourcesRequest request, StreamObserver<UpsertSourcesResponse> responseObserver) {
 
     try (Session session = HibernateSessionManager.getSession()) {
       Transaction transaction = session.beginTransaction();
 
-      String tableName = request.getTableName();
-
-      if (tableName.isEmpty()) {
+      if (request.getSourcesList().isEmpty()) {
         transaction.rollback();
-        responseObserver.onError(new IllegalArgumentException("Table name cannot be null or empty"));
-        return;
-      }
-
-      DataHarnessTable table = findTableByName(session, tableName);
-      if (table == null) {
-        transaction.rollback();
-        responseObserver.onError(new IllegalArgumentException("Table not found: " + tableName));
+        responseObserver.onError(new IllegalArgumentException("At least one source must be provided"));
         return;
       }
 
       try {
-        long tableId = table.getId();
+        for (SourceUpdate sourceUpdate : request.getSourcesList()) {
+          String tableName = sourceUpdate.getTableName();
 
-        if (request.hasKafkaSource()) {
-          KafkaSourceMessage kafkaMsg = request.getKafkaSource();
-          KafkaSourceEntity existing = findKafkaSource(session, tableId, kafkaMsg.getTopicName(),
-            kafkaMsg.getPartitionNumber());
-
-          if (existing != null) {
-            existing.setTrinoCatalogName(kafkaMsg.getTrinoCatalogName());
-            existing.setTrinoSchemaName(kafkaMsg.getTrinoSchemaName());
-            existing.setStartOffset(kafkaMsg.getStartOffset());
-            existing.setEndOffset(kafkaMsg.getEndOffset());
-            session.merge(existing);
-          } else {
-            KafkaSourceEntity entity = new KafkaSourceEntity(tableId, kafkaMsg.getTrinoCatalogName(),
-              kafkaMsg.getTrinoSchemaName(), kafkaMsg.getStartOffset(), kafkaMsg.getEndOffset(),
-              kafkaMsg.getPartitionNumber(), kafkaMsg.getTopicName());
-            session.persist(entity);
+          if (tableName.isEmpty()) {
+            transaction.rollback();
+            responseObserver.onError(new IllegalArgumentException("Table name cannot be null or empty"));
+            return;
           }
-        } else if (request.hasIcebergSource()) {
-          IcebergSourceMessage icebergMsg = request.getIcebergSource();
-          IcebergSourceEntity existing = findIcebergSource(session, tableId, icebergMsg.getTableName());
 
-          if (existing != null) {
-            existing.setTrinoCatalogName(icebergMsg.getTrinoCatalogName());
-            existing.setTrinoSchemaName(icebergMsg.getTrinoSchemaName());
-            existing.setReadTimestamp(icebergMsg.getReadTimestamp());
-            session.merge(existing);
-          } else {
-            IcebergSourceEntity entity = new IcebergSourceEntity(tableId, icebergMsg.getTrinoCatalogName(),
-              icebergMsg.getTrinoSchemaName(), icebergMsg.getTableName(), icebergMsg.getReadTimestamp());
-            session.persist(entity);
+          DataHarnessTable table = findTableByName(session, tableName);
+          if (table == null) {
+            transaction.rollback();
+            responseObserver.onError(new IllegalArgumentException("Table not found: " + tableName));
+            return;
+          }
+
+          long tableId = table.getId();
+
+          if (sourceUpdate.hasKafkaSource()) {
+            KafkaSourceMessage kafkaMsg = sourceUpdate.getKafkaSource();
+            KafkaSourceEntity existing = findKafkaSource(session, tableId, kafkaMsg.getTopicName(),
+              kafkaMsg.getPartitionNumber());
+
+            if (existing != null) {
+              existing.setTrinoCatalogName(kafkaMsg.getTrinoCatalogName());
+              existing.setTrinoSchemaName(kafkaMsg.getTrinoSchemaName());
+              existing.setStartOffset(kafkaMsg.getStartOffset());
+              existing.setEndOffset(kafkaMsg.getEndOffset());
+              session.merge(existing);
+            } else {
+              KafkaSourceEntity entity = new KafkaSourceEntity(tableId, kafkaMsg.getTrinoCatalogName(),
+                kafkaMsg.getTrinoSchemaName(), kafkaMsg.getStartOffset(), kafkaMsg.getEndOffset(),
+                kafkaMsg.getPartitionNumber(), kafkaMsg.getTopicName());
+              session.persist(entity);
+            }
+          } else if (sourceUpdate.hasIcebergSource()) {
+            IcebergSourceMessage icebergMsg = sourceUpdate.getIcebergSource();
+            IcebergSourceEntity existing = findIcebergSource(session, tableId, icebergMsg.getTableName());
+
+            if (existing != null) {
+              existing.setTrinoCatalogName(icebergMsg.getTrinoCatalogName());
+              existing.setTrinoSchemaName(icebergMsg.getTrinoSchemaName());
+              existing.setReadTimestamp(icebergMsg.getReadTimestamp());
+              session.merge(existing);
+            } else {
+              IcebergSourceEntity entity = new IcebergSourceEntity(tableId, icebergMsg.getTrinoCatalogName(),
+                icebergMsg.getTrinoSchemaName(), icebergMsg.getTableName(), icebergMsg.getReadTimestamp());
+              session.persist(entity);
+            }
           }
         }
 
         transaction.commit();
 
-        UpsertSourceResponse response = UpsertSourceResponse.newBuilder().setSuccess(true)
-          .setMessage("Source upserted successfully").build();
+        UpsertSourcesResponse response = UpsertSourcesResponse.newBuilder().setSuccess(true)
+          .setMessage("Sources upserted successfully").build();
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -149,9 +157,11 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         } catch (Exception rollbackEx) {
           logger.warn("Error rolling back transaction", rollbackEx);
         }
+        logger.error("Error upserting sources", e);
         responseObserver.onError(e);
       }
     } catch (Exception e) {
+      logger.error("Error upserting sources - session failure", e);
       responseObserver.onError(e);
     }
   }
