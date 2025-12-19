@@ -84,6 +84,10 @@
       <artifactId>kafka-schema-registry-client</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.confluent</groupId>
+      <artifactId>kafka-protobuf-serializer</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
     </dependency>
@@ -120,6 +124,13 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.example</groupId>
+      <artifactId>dataharness-rpc</artifactId>
+      <version>${revision}</version>
+      <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>

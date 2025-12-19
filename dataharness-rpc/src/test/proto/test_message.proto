@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package org.dataharness.test;
+
+option java_multiple_files = true;
+option java_package = "org.dataharness.test";
+option java_outer_classname = "TestMessageProto";
+
+message TestMessage {
+  int32 id = 1;
+  string name = 2;
+}

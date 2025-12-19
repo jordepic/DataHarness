@@ -2,6 +2,7 @@ package org.dataharness.bootstrap;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.grpc.ManagedChannel;
@@ -102,7 +103,8 @@ public class DataPopulatorIntegrationTest {
 
       stub.upsertSources(upsertSourcesRequest);
 
-      String protobufSchema = "syntax=\"proto3\"; message TestMessage { int32 id = 1; }";
+      ProtobufSchema protobufSchemaObj = new ProtobufSchema(org.dataharness.test.TestMessage.getDescriptor());
+      String protobufSchema = protobufSchemaObj.canonicalString();
 
       SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
         .setTableName(DATA_HARNESS_TABLE)
@@ -154,7 +156,7 @@ public class DataPopulatorIntegrationTest {
   public KafkaPopulationResult populateKafka() throws Exception {
     SchemaRegistryClient client = new CachedSchemaRegistryClient(SCHEMA_REGISTRY_URL, 100);
 
-    Schema schema = ReflectData.get().getSchema(TestMessage.class);
+    Schema schema = ReflectData.get().getSchema(KafkaTestRecord.class);
     String avroSchemaJson = schema.toString();
 
     client.register(TOPIC + "-value", schema);
@@ -165,13 +167,13 @@ public class DataPopulatorIntegrationTest {
     producerProps.put("value.serializer", KafkaAvroSerializer.class);
     producerProps.put("schema.registry.url", SCHEMA_REGISTRY_URL);
 
-    List<TestMessage> messages = new ArrayList<>();
+    List<KafkaTestRecord> messages = new ArrayList<>();
     try (Producer<String, GenericRecord> producer = new KafkaProducer<>(producerProps)) {
-      messages.add(new TestMessage(1, "Alice"));
-      messages.add(new TestMessage(2, "Bob"));
-      messages.add(new TestMessage(3, "Charlie"));
+      messages.add(new KafkaTestRecord(1, "KafkaAlice"));
+      messages.add(new KafkaTestRecord(2, "KafkaBob"));
+      messages.add(new KafkaTestRecord(3, "KafkaCharlie"));
 
-      for (TestMessage msg : messages) {
+      for (KafkaTestRecord msg : messages) {
         GenericRecord record = new GenericData.Record(schema);
         record.put("id", msg.id());
         record.put("name", msg.name());
@@ -236,17 +238,17 @@ public class DataPopulatorIntegrationTest {
 
     org.apache.iceberg.data.GenericRecord record1 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
     record1.setField("id", 1);
-    record1.setField("name", "Alice");
+    record1.setField("name", "IcebergAlice");
     records.add(record1);
 
     org.apache.iceberg.data.GenericRecord record2 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
     record2.setField("id", 2);
-    record2.setField("name", "Bob");
+    record2.setField("name", "IcebergBob");
     records.add(record2);
 
     org.apache.iceberg.data.GenericRecord record3 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
     record3.setField("id", 3);
-    record3.setField("name", "Charlie");
+    record3.setField("name", "IcebergCharlie");
     records.add(record3);
 
     String fileLocation = "/tmp/data.parquet";
@@ -311,6 +313,10 @@ public class DataPopulatorIntegrationTest {
       } else if (source.hasIcebergSource()) {
       }
     }
+  }
+
+  record KafkaTestRecord(int id, String name) {
+
   }
 
   record KafkaPopulationResult(String avroSchema, long messageCount) {

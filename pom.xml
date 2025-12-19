@@ -19,8 +19,8 @@
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <grpc.version>1.75.0</grpc.version>
-    <protobuf.version>4.28.2</protobuf.version>
+    <grpc.version>1.77.0</grpc.version>
+    <protobuf.version>4.31.1</protobuf.version>
     <hibernate.version>6.4.0.Final</hibernate.version>
     <postgresql.version>42.7.7</postgresql.version>
     <slf4j.version>2.0.11</slf4j.version>
@@ -31,7 +31,7 @@
     <assertj.version>3.25.3</assertj.version>
     <kafka.version>3.6.0</kafka.version>
     <avro.version>1.12.0</avro.version>
-    <confluent.version>7.6.0</confluent.version>
+    <confluent.version>8.1.1</confluent.version>
     <os-maven-plugin.extension.version>1.7.0</os-maven-plugin.extension.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
@@ -137,6 +137,17 @@
         <groupId>io.confluent</groupId>
         <artifactId>kafka-schema-registry-client</artifactId>
         <version>${confluent.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.confluent</groupId>
+        <artifactId>kafka-protobuf-serializer</artifactId>
+        <version>${confluent.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
