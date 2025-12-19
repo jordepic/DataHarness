@@ -102,10 +102,13 @@ public class DataPopulatorIntegrationTest {
 
       stub.upsertSources(upsertSourcesRequest);
 
+      String protobufSchema = "syntax=\"proto3\"; message TestMessage { int32 id = 1; }";
+
       SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
         .setTableName(DATA_HARNESS_TABLE)
         .setAvroSchema(kafkaResult.avroSchema)
         .setIcebergSchema(icebergResult.icebergSchema)
+        .setProtobufSchema(protobufSchema)
         .build();
 
       stub.setSchema(schemaRequest);
@@ -297,6 +300,9 @@ public class DataPopulatorIntegrationTest {
       schemaCount++;
     }
     if (response.hasIcebergSchema()) {
+      schemaCount++;
+    }
+    if (response.hasProtobufSchema()) {
       schemaCount++;
     }
 

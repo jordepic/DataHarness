@@ -424,6 +424,75 @@ public class CatalogServiceIntegrationTest {
   }
 
   @Test
+  public void testSetProtobufSchema() {
+    String tableName = "test responsetable responseprotobuf";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String protobufSchemaString = "syntax=\"proto3\"; message TestMessage { int32 id = 1; string name = 2; }";
+
+    SetSchemaRequest request = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setProtobufSchema(protobufSchemaString)
+      .build();
+
+    SetSchemaResponse response = stub.setSchema(request);
+
+    assertThat(response.getSuccess()).isTrue();
+    assertThat(response.getMessage()).isEqualTo("Schema set successfully");
+  }
+
+  @Test
+  public void testLoadTableWithProtobufSchema() {
+    String tableName = "test responsetable responseprotobuf responseload";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String protobufSchemaString = "syntax=\"proto3\"; message TestMessage { int32 id = 1; string name = 2; }";
+
+    SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setProtobufSchema(protobufSchemaString)
+      .build();
+    stub.setSchema(schemaRequest);
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
+
+    assertThat(response.hasProtobufSchema()).isTrue();
+    assertThat(response.getProtobufSchema()).isEqualTo(protobufSchemaString);
+  }
+
+  @Test
+  public void testLoadTableWithAllThreeSchemas() {
+    String tableName = "test responsetable responseall responseschemas";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(tableRequest);
+
+    String avroSchemaString = "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}";
+    String icebergSchemaString = "{\"type\": \"struct\", \"fields\": [{\"id\": 1, \"name\": \"id\", \"required\": true, \"type\": \"int\"}, {\"id\": 2, \"name\": \"name\", \"required\": true, \"type\": \"string\"}]}";
+    String protobufSchemaString = "syntax=\"proto3\"; message TestMessage { int32 id = 1; string name = 2; }";
+
+    SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+      .setTableName(tableName)
+      .setAvroSchema(avroSchemaString)
+      .setIcebergSchema(icebergSchemaString)
+      .setProtobufSchema(protobufSchemaString)
+      .build();
+    stub.setSchema(schemaRequest);
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse response = stub.loadTable(loadRequest);
+
+    assertThat(response.hasAvroSchema()).isTrue();
+    assertThat(response.getAvroSchema()).isEqualTo(avroSchemaString);
+    assertThat(response.hasIcebergSchema()).isTrue();
+    assertThat(response.getIcebergSchema()).isEqualTo(icebergSchemaString);
+    assertThat(response.hasProtobufSchema()).isTrue();
+    assertThat(response.getProtobufSchema()).isEqualTo(protobufSchemaString);
+  }
+
+  @Test
   public void testDropTable() {
     String tableName = "test responsetable responsedrop";
     CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();

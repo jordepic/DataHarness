@@ -26,6 +26,9 @@ public class DataHarnessTable {
   @Column(nullable = true, columnDefinition = "TEXT")
   private String icebergSchema;
 
+  @Column(nullable = true, columnDefinition = "TEXT")
+  private String protobufSchema;
+
   public DataHarnessTable() {
   }
 
@@ -63,5 +66,13 @@ public class DataHarnessTable {
 
   public void setIcebergSchema(String icebergSchema) {
     this.icebergSchema = icebergSchema;
+  }
+
+  public String getProtobufSchema() {
+    return protobufSchema;
+  }
+
+  public void setProtobufSchema(String protobufSchema) {
+    this.protobufSchema = protobufSchema;
   }
 }

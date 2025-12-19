@@ -202,6 +202,9 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
       if (table.getIcebergSchema() != null) {
         responseBuilder.setIcebergSchema(table.getIcebergSchema());
       }
+      if (table.getProtobufSchema() != null) {
+        responseBuilder.setProtobufSchema(table.getProtobufSchema());
+      }
 
       for (KafkaSourceEntity kafka : kafkaSources) {
         KafkaSourceMessage kafkaMsg = KafkaSourceMessage.newBuilder()
@@ -263,8 +266,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
       try {
         String avroSchema = request.hasAvroSchema() ? request.getAvroSchema() : null;
         String icebergSchema = request.hasIcebergSchema() ? request.getIcebergSchema() : null;
+        String protobufSchema = request.hasProtobufSchema() ? request.getProtobufSchema() : null;
         table.setAvroSchema(avroSchema);
         table.setIcebergSchema(icebergSchema);
+        table.setProtobufSchema(protobufSchema);
         session.merge(table);
         transaction.commit();
 

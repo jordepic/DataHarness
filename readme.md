@@ -34,7 +34,7 @@ The main service exposed via gRPC with the following RPC methods:
 #### **LoadTable**
 
 - **Request**: `LoadTableRequest` with table name
-- **Response**: `LoadTableResponse` with table schemas (Avro and/or Iceberg) and list of sources
+- **Response**: `LoadTableResponse` with table schemas (Avro, Iceberg, and/or Protocol Buffers) and list of sources
 - Retrieves a table along with its associated schemas and configured data sources
 
 #### **ListTables**
@@ -44,9 +44,9 @@ The main service exposed via gRPC with the following RPC methods:
 
 #### **SetSchema**
 
-- **Request**: `SetSchemaRequest` with table name and optional `avro_schema` and/or `iceberg_schema` fields
+- **Request**: `SetSchemaRequest` with table name and optional `avro_schema`, `iceberg_schema`, and/or `protobuf_schema` fields
 - **Response**: `SetSchemaResponse` with success status
-- Allows associating Avro and/or Iceberg schemas with a DataHarness table
+- Allows associating Avro, Iceberg, and/or Protocol Buffers schemas with a DataHarness table
 - Schemas are persisted and returned when loading tables
 
 #### **DropTable**
@@ -79,6 +79,7 @@ Represents a managed table in the system with associated metadata, including:
 - Table name (unique identifier)
 - Avro schema (optional nullable string for schema definitions)
 - Iceberg schema (optional nullable string for schema definitions)
+- Protocol Buffers schema (optional nullable string for schema definitions)
 
 ### KafkaSourceEntity
 
@@ -158,7 +159,7 @@ Main class: `org.dataharness.Main`
 - ✅ **Kafka Source Integration**: Ingest data from Kafka topics with partition-level offset management
 - ✅ **Iceberg Source Integration**: Query Iceberg tables with time-travel support
 - ✅ **Source Management**: List and manage sources associated with a DataHarness table
-- ✅ **Multi-Schema Support**: Associate both Avro and Iceberg schemas with DataHarness tables for flexible schema management
+- ✅ **Multi-Schema Support**: Associate Avro, Iceberg, and Protocol Buffers schemas with DataHarness tables for flexible schema management
 - ✅ **Schema Persistence**: Schemas are persisted in the database and returned when loading tables
 - ✅ **gRPC API**: Complete service layer for catalog operations with CreateTable, DropTable, LoadTable, SetSchema, and source management
 
