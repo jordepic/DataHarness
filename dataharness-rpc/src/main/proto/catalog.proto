@@ -6,6 +6,12 @@ option java_multiple_files = true;
 option java_package = "org.dataharness.proto";
 option java_outer_classname = "CatalogProto";
 
+enum SchemaType {
+  SCHEMA_TYPE_UNSPECIFIED = 0;
+  AVRO = 1;
+  PROTOBUF = 2;
+}
+
 service CatalogService {
   rpc CreateTable(CreateTableRequest) returns (CreateTableResponse) {}
   rpc UpsertSources(UpsertSourcesRequest) returns (UpsertSourcesResponse) {}
@@ -60,6 +66,9 @@ message KafkaSourceMessage {
   int64 end_offset = 4;
   int32 partition_number = 5;
   string topic_name = 6;
+  string broker_urls = 7;
+  SchemaType schema_type = 8;
+  string schema = 9;
 }
 
 message IcebergSourceMessage {

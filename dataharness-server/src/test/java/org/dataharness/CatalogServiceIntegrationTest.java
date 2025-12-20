@@ -122,7 +122,11 @@ public class CatalogServiceIntegrationTest {
 
     KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder().setTrinoCatalogName("trino responsecatalog")
       .setTrinoSchemaName("public").setStartOffset(0).setEndOffset(100).setPartitionNumber(0)
-      .setTopicName("test responsetopic").build();
+      .setTopicName("test responsetopic")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema("{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+      .build();
 
     SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource).build();
@@ -164,7 +168,11 @@ public class CatalogServiceIntegrationTest {
 
     KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder().setTrinoCatalogName("trino responsecatalog responsekafka")
       .setTrinoSchemaName("schema1").setStartOffset(0).setEndOffset(100).setPartitionNumber(0)
-      .setTopicName("topic1").build();
+      .setTopicName("topic1")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema("{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+      .build();
 
     SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource).build();
@@ -210,7 +218,11 @@ public class CatalogServiceIntegrationTest {
 
     KafkaSourceMessage kafkaSource1 = KafkaSourceMessage.newBuilder().setTrinoCatalogName("catalog responsev1")
       .setTrinoSchemaName("schema responsev1").setStartOffset(0).setEndOffset(100).setPartitionNumber(0)
-      .setTopicName("test responsetopic").build();
+      .setTopicName("test responsetopic")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema("{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+      .build();
 
     SourceUpdate sourceUpdate1 = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource1).build();
@@ -219,7 +231,11 @@ public class CatalogServiceIntegrationTest {
 
     KafkaSourceMessage kafkaSource2 = KafkaSourceMessage.newBuilder().setTrinoCatalogName("catalog responsev2")
       .setTrinoSchemaName("schema responsev2").setStartOffset(100).setEndOffset(200).setPartitionNumber(0)
-      .setTopicName("test responsetopic").build();
+      .setTopicName("test responsetopic")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema("{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+      .build();
 
     SourceUpdate sourceUpdate2 = SourceUpdate.newBuilder().setTableName(tableName)
       .setKafkaSource(kafkaSource2).build();
@@ -299,6 +315,9 @@ public class CatalogServiceIntegrationTest {
       .setEndOffset(100)
       .setPartitionNumber(0)
       .setTopicName("topic1")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema(avroSchemaString)
       .build();
 
     SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
@@ -522,6 +541,9 @@ public class CatalogServiceIntegrationTest {
       .setEndOffset(100)
       .setPartitionNumber(0)
       .setTopicName("topic1")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema("{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
       .build();
 
     IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
@@ -592,6 +614,9 @@ public class CatalogServiceIntegrationTest {
       .setEndOffset(100)
       .setPartitionNumber(0)
       .setTopicName("topic1")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema("{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
       .build();
 
     IcebergSourceMessage icebergSource2 = IcebergSourceMessage.newBuilder()
@@ -643,6 +668,9 @@ public class CatalogServiceIntegrationTest {
       .setEndOffset(100)
       .setPartitionNumber(0)
       .setTopicName("topic")
+      .setBrokerUrls("localhost:9092")
+      .setSchemaType(SchemaType.AVRO)
+      .setSchema("{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
       .build();
 
     SourceUpdate validUpdate = SourceUpdate.newBuilder()

@@ -9,4 +9,5 @@ option java_outer_classname = "TestMessageProto";
 message TestMessage {
   int32 id = 1;
   string name = 2;
+  string address = 3;
 }

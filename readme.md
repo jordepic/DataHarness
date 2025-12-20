@@ -63,6 +63,9 @@ The main service exposed via gRPC with the following RPC methods:
 - Trino catalog and schema configuration
 - Partition-level offset management (start/end offsets)
 - Topic-based sourcing
+- Broker URL list for cluster connectivity
+- Schema type support (Avro or Protocol Buffers)
+- Schema storage for message serialization format
 
 #### **Iceberg Source**
 
@@ -88,6 +91,9 @@ Persists Kafka source configuration including:
 - Trino catalog/schema mapping
 - Partition and offset information
 - Topic references
+- Broker URLs for cluster connectivity
+- Schema type (Avro or Protocol Buffers) as enum stored as string
+- Schema definition for message deserialization
 
 ### IcebergSourceEntity
 

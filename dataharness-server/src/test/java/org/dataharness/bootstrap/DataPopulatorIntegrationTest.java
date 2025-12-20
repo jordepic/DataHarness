@@ -48,7 +48,7 @@ import java.util.*;
 public class DataPopulatorIntegrationTest {
   private static final String BOOTSTRAP_SERVERS = "localhost:9092";
   private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
-  private static final String TOPIC = "kafka_test";
+  private static final String TOPIC = "kafka_avro_test";
   private static final String DATA_HARNESS_TABLE = "bootstrap";
   private static final String ICEBERG_TABLE_NAME = "iceberg_test";
 
@@ -77,6 +77,9 @@ public class DataPopulatorIntegrationTest {
         .setStartOffset(0)
         .setEndOffset(kafkaResult.messageCount)
         .setPartitionNumber(0)
+        .setBrokerUrls(BOOTSTRAP_SERVERS)
+        .setSchemaType(SchemaType.AVRO)
+        .setSchema(kafkaResult.avroSchema)
         .build();
 
       SourceUpdate kafkaSourceUpdate = SourceUpdate.newBuilder()
@@ -169,16 +172,17 @@ public class DataPopulatorIntegrationTest {
 
     List<KafkaTestRecord> messages = new ArrayList<>();
     try (Producer<String, GenericRecord> producer = new KafkaProducer<>(producerProps)) {
-      messages.add(new KafkaTestRecord(1, "KafkaAlice"));
-      messages.add(new KafkaTestRecord(2, "KafkaBob"));
-      messages.add(new KafkaTestRecord(3, "KafkaCharlie"));
+      messages.add(new KafkaTestRecord(1, "KafkaAlice", "123 Kafka St"));
+      messages.add(new KafkaTestRecord(2, "KafkaBob", "456 Message Ave"));
+      messages.add(new KafkaTestRecord(3, "KafkaCharlie", "789 Topic Ln"));
 
       for (KafkaTestRecord msg : messages) {
         GenericRecord record = new GenericData.Record(schema);
         record.put("id", msg.id());
         record.put("name", msg.name());
+        record.put("address", msg.address());
 
-        producer.send(new ProducerRecord<>(TOPIC, String.valueOf(msg.id()), record));
+        producer.send(new ProducerRecord<>(TOPIC, record));
       }
       producer.flush();
     }
@@ -210,7 +214,8 @@ public class DataPopulatorIntegrationTest {
 
     org.apache.iceberg.Schema icebergSchema = new org.apache.iceberg.Schema(
       Types.NestedField.required(1, "id", Types.IntegerType.get()),
-      Types.NestedField.required(2, "name", Types.StringType.get())
+      Types.NestedField.required(2, "name", Types.StringType.get()),
+      Types.NestedField.required(3, "address", Types.StringType.get())
     );
 
     String icebergSchemaJson = SchemaParser.toJson(icebergSchema);
@@ -239,16 +244,19 @@ public class DataPopulatorIntegrationTest {
     org.apache.iceberg.data.GenericRecord record1 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
     record1.setField("id", 1);
     record1.setField("name", "IcebergAlice");
+    record1.setField("address", "123 Iceberg St");
     records.add(record1);
 
     org.apache.iceberg.data.GenericRecord record2 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
     record2.setField("id", 2);
     record2.setField("name", "IcebergBob");
+    record2.setField("address", "456 Snapshot Ave");
     records.add(record2);
 
     org.apache.iceberg.data.GenericRecord record3 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
     record3.setField("id", 3);
     record3.setField("name", "IcebergCharlie");
+    record3.setField("address", "789 Catalog Ln");
     records.add(record3);
 
     String fileLocation = "/tmp/data.parquet";
@@ -315,7 +323,7 @@ public class DataPopulatorIntegrationTest {
     }
   }
 
-  record KafkaTestRecord(int id, String name) {
+  record KafkaTestRecord(int id, String name, String address) {
 
   }
 
