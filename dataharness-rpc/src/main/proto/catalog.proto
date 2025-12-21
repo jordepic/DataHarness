@@ -77,6 +77,8 @@ message IcebergSourceMessage {
   string trino_schema_name = 2;
   string table_name = 3;
   int64 read_timestamp = 4;
+  string spark_catalog_name = 5;
+  string spark_schema_name = 6;
 }
 
 message YugabyteDBSourceMessage {

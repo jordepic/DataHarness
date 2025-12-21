@@ -109,6 +109,8 @@ public class DataPopulatorIntegrationTest {
           .setTrinoSchemaName("default")
           .setTableName(ICEBERG_TABLE_NAME)
           .setReadTimestamp(icebergResult.snapshotId)
+          .setSparkCatalogName("spark_catalog")
+          .setSparkSchemaName("spark_schema")
           .build();
 
         SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()

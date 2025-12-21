@@ -69,7 +69,8 @@ The main service exposed via gRPC with the following RPC methods:
 
 #### **Iceberg Source**
 
-- Trino integration
+- Trino integration (catalog and schema configuration)
+- Spark integration (catalog and schema configuration)
 - Time-travel support via read timestamp
 - Table-level management
 
@@ -107,8 +108,9 @@ Persists Kafka source configuration including:
 Persists Iceberg source configuration including:
 
 - Trino catalog/schema mapping
+- Spark catalog/schema mapping
 - Table references
-- Temporal query support
+- Temporal query support via read timestamp
 
 ### YugabyteDBSourceEntity (In Development)
 

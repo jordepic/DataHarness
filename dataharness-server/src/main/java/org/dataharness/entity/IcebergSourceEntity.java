@@ -35,6 +35,12 @@ public class IcebergSourceEntity {
   @Column(name = "read_timestamp", nullable = false)
   private long readTimestamp;
 
+  @Column(name = "spark_catalog_name")
+  private String sparkCatalogName;
+
+  @Column(name = "spark_schema_name")
+  private String sparkSchemaName;
+
   public IcebergSourceEntity() {
   }
 
@@ -45,6 +51,17 @@ public class IcebergSourceEntity {
     this.trinoSchemaName = trinoSchemaName;
     this.tableName = tableName;
     this.readTimestamp = readTimestamp;
+  }
+
+  public IcebergSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, String tableName,
+                             long readTimestamp, String sparkCatalogName, String sparkSchemaName) {
+    this.tableId = tableId;
+    this.trinoCatalogName = trinoCatalogName;
+    this.trinoSchemaName = trinoSchemaName;
+    this.tableName = tableName;
+    this.readTimestamp = readTimestamp;
+    this.sparkCatalogName = sparkCatalogName;
+    this.sparkSchemaName = sparkSchemaName;
   }
 
   public long getId() {
@@ -93,5 +110,21 @@ public class IcebergSourceEntity {
 
   public void setReadTimestamp(long readTimestamp) {
     this.readTimestamp = readTimestamp;
+  }
+
+  public String getSparkCatalogName() {
+    return sparkCatalogName;
+  }
+
+  public void setSparkCatalogName(String sparkCatalogName) {
+    this.sparkCatalogName = sparkCatalogName;
+  }
+
+  public String getSparkSchemaName() {
+    return sparkSchemaName;
+  }
+
+  public void setSparkSchemaName(String sparkSchemaName) {
+    this.sparkSchemaName = sparkSchemaName;
   }
 }

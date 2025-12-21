@@ -134,10 +134,13 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
               existing.setTrinoCatalogName(icebergMsg.getTrinoCatalogName());
               existing.setTrinoSchemaName(icebergMsg.getTrinoSchemaName());
               existing.setReadTimestamp(icebergMsg.getReadTimestamp());
+              existing.setSparkCatalogName(icebergMsg.getSparkCatalogName());
+              existing.setSparkSchemaName(icebergMsg.getSparkSchemaName());
               session.merge(existing);
             } else {
               IcebergSourceEntity entity = new IcebergSourceEntity(tableId, icebergMsg.getTrinoCatalogName(),
-                icebergMsg.getTrinoSchemaName(), icebergMsg.getTableName(), icebergMsg.getReadTimestamp());
+                icebergMsg.getTrinoSchemaName(), icebergMsg.getTableName(), icebergMsg.getReadTimestamp(),
+                icebergMsg.getSparkCatalogName(), icebergMsg.getSparkSchemaName());
               session.persist(entity);
             }
           } else if (sourceUpdate.hasYugabytedbSource()) {
@@ -242,7 +245,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         IcebergSourceMessage icebergMsg = IcebergSourceMessage.newBuilder()
           .setTrinoCatalogName(iceberg.getTrinoCatalogName())
           .setTrinoSchemaName(iceberg.getTrinoSchemaName()).setTableName(iceberg.getTableName())
-          .setReadTimestamp(iceberg.getReadTimestamp()).build();
+          .setReadTimestamp(iceberg.getReadTimestamp())
+          .setSparkCatalogName(iceberg.getSparkCatalogName() != null ? iceberg.getSparkCatalogName() : "")
+          .setSparkSchemaName(iceberg.getSparkSchemaName() != null ? iceberg.getSparkSchemaName() : "")
+          .build();
 
         TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
           .setIcebergSource(icebergMsg).build();

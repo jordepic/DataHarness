@@ -148,8 +148,20 @@ public class CatalogServiceIntegrationTest {
     CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
     CreateTableResponse tableResponse = stub.createTable(tableRequest);
 
-    IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder().setTrinoCatalogName("trino responsecatalog")
-      .setTrinoSchemaName("public").setTableName("iceberg responsetable").setReadTimestamp(System.currentTimeMillis())
+    String trinocatalog = "trino responsecatalog";
+    String trinoschema = "public";
+    String icebergTableName = "iceberg responsetable";
+    long readTimestamp = System.currentTimeMillis();
+    String sparkCatalogName = "spark responsecatalog";
+    String sparkSchemaName = "spark responseschema";
+
+    IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+      .setTrinoCatalogName(trinocatalog)
+      .setTrinoSchemaName(trinoschema)
+      .setTableName(icebergTableName)
+      .setReadTimestamp(readTimestamp)
+      .setSparkCatalogName(sparkCatalogName)
+      .setSparkSchemaName(sparkSchemaName)
       .build();
 
     SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
@@ -161,6 +173,20 @@ public class CatalogServiceIntegrationTest {
 
     assertThat(response.getSuccess()).isTrue();
     assertThat(response.getMessage()).isEqualTo("Sources upserted successfully");
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse loadResponse = stub.loadTable(loadRequest);
+
+    assertThat(loadResponse.getSourcesCount()).isEqualTo(1);
+    assertThat(loadResponse.getSourcesList().get(0).hasIcebergSource()).isTrue();
+
+    IcebergSourceMessage loadedSource = loadResponse.getSourcesList().get(0).getIcebergSource();
+    assertThat(loadedSource.getTrinoCatalogName()).isEqualTo(trinocatalog);
+    assertThat(loadedSource.getTrinoSchemaName()).isEqualTo(trinoschema);
+    assertThat(loadedSource.getTableName()).isEqualTo(icebergTableName);
+    assertThat(loadedSource.getReadTimestamp()).isEqualTo(readTimestamp);
+    assertThat(loadedSource.getSparkCatalogName()).isEqualTo(sparkCatalogName);
+    assertThat(loadedSource.getSparkSchemaName()).isEqualTo(sparkSchemaName);
   }
 
   @Test
