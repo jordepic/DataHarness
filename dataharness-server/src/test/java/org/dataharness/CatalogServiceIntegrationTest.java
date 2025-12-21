@@ -82,6 +82,9 @@ public class CatalogServiceIntegrationTest {
       Query<?> deleteIcebergSources = session.createQuery("DELETE FROM IcebergSourceEntity");
       deleteIcebergSources.executeUpdate();
 
+      Query<?> deleteYugabyteSources = session.createQuery("DELETE FROM YugabyteSourceEntity");
+      deleteYugabyteSources.executeUpdate();
+
       Query<?> deleteTables = session.createQuery("DELETE FROM DataHarnessTable");
       deleteTables.executeUpdate();
 
@@ -158,6 +161,56 @@ public class CatalogServiceIntegrationTest {
 
     assertThat(response.getSuccess()).isTrue();
     assertThat(response.getMessage()).isEqualTo("Sources upserted successfully");
+  }
+
+  @Test
+  public void testUpsertYugabyteDBSource() {
+    String tableName = "test responsetable responseyugabyte";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    CreateTableResponse tableResponse = stub.createTable(tableRequest);
+
+    String trinocatalog = "trino responsecatalog";
+    String trinoschema = "public";
+    String tableNameYugabyte = "yugabyte responsetable";
+    String jdbcUrl = "jdbc:postgresql://localhost:5433/yugabyte?sslmode=disable";
+    String username = "yugabyte";
+    String password = "";
+    long readTimestamp = System.currentTimeMillis() * 1000;
+
+    YugabyteDBSourceMessage yugabyteSource = YugabyteDBSourceMessage.newBuilder()
+      .setTrinoCatalogName(trinocatalog)
+      .setTrinoSchemaName(trinoschema)
+      .setTableName(tableNameYugabyte)
+      .setJdbcUrl(jdbcUrl)
+      .setUsername(username)
+      .setPassword(password)
+      .setReadTimestamp(readTimestamp)
+      .build();
+
+    SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
+      .setYugabytedbSource(yugabyteSource).build();
+
+    UpsertSourcesRequest request = UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+
+    UpsertSourcesResponse response = stub.upsertSources(request);
+
+    assertThat(response.getSuccess()).isTrue();
+    assertThat(response.getMessage()).isEqualTo("Sources upserted successfully");
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse loadResponse = stub.loadTable(loadRequest);
+
+    assertThat(loadResponse.getSourcesCount()).isEqualTo(1);
+    assertThat(loadResponse.getSourcesList().get(0).hasYugabytedbSource()).isTrue();
+
+    YugabyteDBSourceMessage loadedSource = loadResponse.getSourcesList().get(0).getYugabytedbSource();
+    assertThat(loadedSource.getTrinoCatalogName()).isEqualTo(trinocatalog);
+    assertThat(loadedSource.getTrinoSchemaName()).isEqualTo(trinoschema);
+    assertThat(loadedSource.getTableName()).isEqualTo(tableNameYugabyte);
+    assertThat(loadedSource.getJdbcUrl()).isEqualTo(jdbcUrl);
+    assertThat(loadedSource.getUsername()).isEqualTo(username);
+    assertThat(loadedSource.getPassword()).isEqualTo(password);
+    assertThat(loadedSource.getReadTimestamp()).isEqualTo(readTimestamp);
   }
 
   @Test

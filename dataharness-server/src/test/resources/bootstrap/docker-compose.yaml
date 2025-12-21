@@ -66,6 +66,30 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
 
+  cockroachdb:
+    image: cockroachdb/cockroach:v25.4.2
+    container_name: cockroachdb
+    networks:
+      - kafka-net
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    command: start-single-node --insecure
+    environment:
+      COCKROACH_DATABASE: test_db
+
+  yugabytedb:
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    container_name: yugabytedb
+    networks:
+      - kafka-net
+    ports:
+      - "17000:7000"
+      - "19000:9000"
+      - "15433:15433"
+      - "5433:5433"
+      - "19042:9042"
+    command: bin/yugabyted start --background=false --timestamp_history_retention_interval_sec=86400
 
   data-harness:
     image: data-harness:latest

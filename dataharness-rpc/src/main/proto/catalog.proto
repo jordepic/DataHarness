@@ -40,6 +40,7 @@ message SourceUpdate {
   oneof source {
     KafkaSourceMessage kafka_source = 2;
     IcebergSourceMessage iceberg_source = 3;
+    YugabyteDBSourceMessage yugabytedb_source = 4;
   }
 }
 
@@ -78,11 +79,22 @@ message IcebergSourceMessage {
   int64 read_timestamp = 4;
 }
 
+message YugabyteDBSourceMessage {
+  string trino_catalog_name = 1;
+  string trino_schema_name = 2;
+  string table_name = 3;
+  string jdbc_url = 4;
+  string username = 5;
+  string password = 6;
+  int64 read_timestamp = 7;
+}
+
 message TableSourceMessage {
   string table_name = 1;
   oneof source {
     KafkaSourceMessage kafka_source = 2;
     IcebergSourceMessage iceberg_source = 3;
+    YugabyteDBSourceMessage yugabytedb_source = 4;
   }
 }
 

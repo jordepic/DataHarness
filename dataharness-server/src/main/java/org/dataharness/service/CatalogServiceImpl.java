@@ -6,6 +6,7 @@ import org.dataharness.db.HibernateSessionManager;
 import org.dataharness.entity.DataHarnessTable;
 import org.dataharness.entity.IcebergSourceEntity;
 import org.dataharness.entity.KafkaSourceEntity;
+import org.dataharness.entity.YugabyteSourceEntity;
 import org.dataharness.proto.*;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -139,6 +140,24 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                 icebergMsg.getTrinoSchemaName(), icebergMsg.getTableName(), icebergMsg.getReadTimestamp());
               session.persist(entity);
             }
+          } else if (sourceUpdate.hasYugabytedbSource()) {
+            YugabyteDBSourceMessage yugabyteMsg = sourceUpdate.getYugabytedbSource();
+            YugabyteSourceEntity existing = findYugabyteSource(session, tableId, yugabyteMsg.getTableName());
+
+            if (existing != null) {
+              existing.setTrinoCatalogName(yugabyteMsg.getTrinoCatalogName());
+              existing.setTrinoSchemaName(yugabyteMsg.getTrinoSchemaName());
+              existing.setJdbcUrl(yugabyteMsg.getJdbcUrl());
+              existing.setUsername(yugabyteMsg.getUsername());
+              existing.setPassword(yugabyteMsg.getPassword());
+              existing.setReadTimestamp(yugabyteMsg.getReadTimestamp());
+              session.merge(existing);
+            } else {
+              YugabyteSourceEntity entity = new YugabyteSourceEntity(tableId, yugabyteMsg.getTrinoCatalogName(),
+                yugabyteMsg.getTrinoSchemaName(), yugabyteMsg.getTableName(), yugabyteMsg.getJdbcUrl(),
+                yugabyteMsg.getUsername(), yugabyteMsg.getPassword(), yugabyteMsg.getReadTimestamp());
+              session.persist(entity);
+            }
           }
         }
 
@@ -194,6 +213,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
 
       List<KafkaSourceEntity> kafkaSources = findAllKafkaSources(session, tableId);
       List<IcebergSourceEntity> icebergSources = findAllIcebergSources(session, tableId);
+      List<YugabyteSourceEntity> yugabyteSources = findAllYugabyteSources(session, tableId);
 
       LoadTableResponse.Builder responseBuilder = LoadTableResponse.newBuilder();
       if (table.getAvroSchema() != null) {
@@ -226,6 +246,22 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
 
         TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
           .setIcebergSource(icebergMsg).build();
+
+        responseBuilder.addSources(sourceMessage);
+      }
+
+      for (YugabyteSourceEntity yugabyte : yugabyteSources) {
+        YugabyteDBSourceMessage yugabyteMsg = YugabyteDBSourceMessage.newBuilder()
+          .setTrinoCatalogName(yugabyte.getTrinoCatalogName())
+          .setTrinoSchemaName(yugabyte.getTrinoSchemaName())
+          .setTableName(yugabyte.getTableName())
+          .setJdbcUrl(yugabyte.getJdbcUrl())
+          .setUsername(yugabyte.getUsername())
+          .setPassword(yugabyte.getPassword())
+          .setReadTimestamp(yugabyte.getReadTimestamp()).build();
+
+        TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
+          .setYugabytedbSource(yugabyteMsg).build();
 
         responseBuilder.addSources(sourceMessage);
       }
@@ -356,6 +392,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         deleteIcebergSources.setParameter("tableId", tableId);
         deleteIcebergSources.executeUpdate();
 
+        Query<?> deleteYugabyteSources = session.createQuery("DELETE FROM YugabyteSourceEntity WHERE tableId = :tableId");
+        deleteYugabyteSources.setParameter("tableId", tableId);
+        deleteYugabyteSources.executeUpdate();
+
         session.remove(table);
 
         transaction.commit();
@@ -411,6 +451,16 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     return query.uniqueResult();
   }
 
+  private YugabyteSourceEntity findYugabyteSource(Session session, long tableId, String tableName) {
+    Query<YugabyteSourceEntity> query = session.createQuery(
+      "FROM YugabyteSourceEntity WHERE tableId = :tableId AND tableName = :tableName",
+      YugabyteSourceEntity.class);
+    query.setParameter("tableId", tableId);
+    query.setParameter("tableName", tableName);
+
+    return query.uniqueResult();
+  }
+
   private List<KafkaSourceEntity> findAllKafkaSources(Session session, long tableId) {
     Query<KafkaSourceEntity> query = session.createQuery("FROM KafkaSourceEntity WHERE tableId = :tableId",
       KafkaSourceEntity.class);
@@ -422,6 +472,14 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   private List<IcebergSourceEntity> findAllIcebergSources(Session session, long tableId) {
     Query<IcebergSourceEntity> query = session.createQuery("FROM IcebergSourceEntity WHERE tableId = :tableId",
       IcebergSourceEntity.class);
+    query.setParameter("tableId", tableId);
+
+    return query.getResultList();
+  }
+
+  private List<YugabyteSourceEntity> findAllYugabyteSources(Session session, long tableId) {
+    Query<YugabyteSourceEntity> query = session.createQuery("FROM YugabyteSourceEntity WHERE tableId = :tableId",
+      YugabyteSourceEntity.class);
     query.setParameter("tableId", tableId);
 
     return query.getResultList();

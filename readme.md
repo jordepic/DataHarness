@@ -28,13 +28,13 @@ The main service exposed via gRPC with the following RPC methods:
 
 #### **UpsertSource**
 
-- **Request**: `UpsertSourceRequest` with table name and source configuration (Kafka or Iceberg)
+- **Request**: `UpsertSourceRequest` with table name and source configuration (Kafka, Iceberg, or YugabyteDB)
 - **Response**: `UpsertSourceResponse` with success status
 
 #### **LoadTable**
 
 - **Request**: `LoadTableRequest` with table name
-- **Response**: `LoadTableResponse` with table schemas (Avro, Iceberg, and/or Protocol Buffers) and list of sources
+- **Response**: `LoadTableResponse` with table schemas (Avro, Iceberg, and/or Protocol Buffers) and list of sources (Kafka, Iceberg, and/or YugabyteDB)
 - Retrieves a table along with its associated schemas and configured data sources
 
 #### **ListTables**
@@ -53,7 +53,7 @@ The main service exposed via gRPC with the following RPC methods:
 
 - **Request**: `DropTableRequest` with table name
 - **Response**: `DropTableResponse` with success status and message
-- Drops a table and all of its associated sources (both Kafka and Iceberg)
+- Drops a table and all of its associated sources (Kafka, Iceberg, and YugabyteDB)
 - Performs cascading deletion of all sources linked to the table
 
 ### Data Source Support
@@ -72,6 +72,13 @@ The main service exposed via gRPC with the following RPC methods:
 - Trino integration
 - Time-travel support via read timestamp
 - Table-level management
+
+#### **YugabyteDB Source**
+
+- PostgreSQL-compatible relational database
+- JDBC connection configuration
+- Table-level management with read timestamp support
+- Supports time-travel queries through read timestamp field
 
 ## Database Models
 
@@ -102,6 +109,15 @@ Persists Iceberg source configuration including:
 - Trino catalog/schema mapping
 - Table references
 - Temporal query support
+
+### YugabyteDBSourceEntity (In Development)
+
+Will persist YugabyteDB source configuration including:
+
+- JDBC connection details (URL, username, password)
+- Trino catalog/schema mapping
+- Table references
+- Read timestamp for temporal queries
 
 ## Configuration
 
@@ -173,11 +189,10 @@ Main class: `org.dataharness.Main`
 
 ### Planned Data Sources
 
+- **YugabyteDB** (In Development) - PostgreSQL-compatible distributed SQL database
 - **Hudi**
 - **Delta Lake**
-- **CockroachDB**
 - **TiDB**
-- **YugabyteDB**
 - **Google Spanner**
 
 ### Query Engine Support
