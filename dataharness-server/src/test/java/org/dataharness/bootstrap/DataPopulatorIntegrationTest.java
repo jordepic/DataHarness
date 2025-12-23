@@ -103,23 +103,21 @@ public class DataPopulatorIntegrationTest {
       UpsertSourcesRequest.Builder upsertSourcesBuilder = UpsertSourcesRequest.newBuilder()
         .addSources(kafkaSourceUpdate);
 
-      if (icebergResult != null) {
-        IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
-          .setTrinoCatalogName("iceberg")
-          .setTrinoSchemaName("default")
-          .setTableName(ICEBERG_TABLE_NAME)
-          .setReadTimestamp(icebergResult.snapshotId)
-          .setSparkCatalogName("spark_catalog")
-          .setSparkSchemaName("spark_schema")
-          .build();
+      IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+        .setTrinoCatalogName("iceberg")
+        .setTrinoSchemaName("default")
+        .setTableName(ICEBERG_TABLE_NAME)
+        .setReadTimestamp(icebergResult.snapshotId)
+        .setSparkCatalogName("spark_catalog")
+        .setSparkSchemaName("spark_schema")
+        .build();
 
-        SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
-          .setTableName(DATA_HARNESS_TABLE)
-          .setIcebergSource(icebergSource)
-          .build();
+      SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setIcebergSource(icebergSource)
+        .build();
 
-        upsertSourcesBuilder.addSources(icebergSourceUpdate);
-      }
+      upsertSourcesBuilder.addSources(icebergSourceUpdate);
 
       YugabyteDBSourceMessage yugabyteSource = YugabyteDBSourceMessage.newBuilder()
         .setTrinoCatalogName(NOT_IMPLEMENTED)
@@ -148,9 +146,7 @@ public class DataPopulatorIntegrationTest {
         .setAvroSchema(kafkaResult.avroSchema)
         .setProtobufSchema(protobufSchema);
 
-      if (icebergResult != null) {
-        schemaRequestBuilder.setIcebergSchema(icebergResult.icebergSchema);
-      }
+      schemaRequestBuilder.setIcebergSchema(icebergResult.icebergSchema);
 
       SetSchemaRequest schemaRequest = schemaRequestBuilder.build();
 
