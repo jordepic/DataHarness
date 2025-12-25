@@ -56,6 +56,13 @@ The main service exposed via gRPC with the following RPC methods:
 - Drops a table and all of its associated sources (Kafka, Iceberg, and YugabyteDB)
 - Performs cascading deletion of all sources linked to the table
 
+#### **TableExists**
+
+- **Request**: `TableExistsRequest` with table name
+- **Response**: `TableExistsResponse` with boolean `exists` field
+- Checks whether a table exists in the catalog without loading its sources or schemas
+- Provides efficient table existence verification by querying only the DataHarnessTable entity
+
 ### Data Source Support
 
 #### **Kafka Source**
@@ -180,12 +187,13 @@ Main class: `org.dataharness.Main`
 
 - ✅ **Table Creation**: Create and manage DataHarness tables with metadata persistence
 - ✅ **Table Deletion**: Drop tables with cascading deletion of all associated sources
+- ✅ **Table Existence Check**: Efficiently verify table existence without loading sources or schemas
 - ✅ **Kafka Source Integration**: Ingest data from Kafka topics with partition-level offset management
 - ✅ **Iceberg Source Integration**: Query Iceberg tables with time-travel support
 - ✅ **Source Management**: List and manage sources associated with a DataHarness table
 - ✅ **Multi-Schema Support**: Associate Avro, Iceberg, and Protocol Buffers schemas with DataHarness tables for flexible schema management
 - ✅ **Schema Persistence**: Schemas are persisted in the database and returned when loading tables
-- ✅ **gRPC API**: Complete service layer for catalog operations with CreateTable, DropTable, LoadTable, SetSchema, and source management
+- ✅ **gRPC API**: Complete service layer for catalog operations with CreateTable, DropTable, LoadTable, SetSchema, TableExists, and source management
 
 ## Roadmap
 

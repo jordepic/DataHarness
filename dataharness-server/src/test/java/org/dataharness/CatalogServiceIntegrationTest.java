@@ -775,4 +775,25 @@ public class CatalogServiceIntegrationTest {
 
     assertThat(loadResponse.getSourcesCount()).isEqualTo(0);
   }
+
+  @Test
+  public void testTableExists() {
+    String tableName = "test responsetable responseexists";
+    CreateTableRequest request = CreateTableRequest.newBuilder().setName(tableName).build();
+    stub.createTable(request);
+
+    TableExistsRequest existsRequest = TableExistsRequest.newBuilder().setTableName(tableName).build();
+    TableExistsResponse response = stub.tableExists(existsRequest);
+
+    assertThat(response.getExists()).isTrue();
+  }
+
+  @Test
+  public void testTableExistsNotFound() {
+    String tableName = "nonexistent responsetable";
+    TableExistsRequest request = TableExistsRequest.newBuilder().setTableName(tableName).build();
+    TableExistsResponse response = stub.tableExists(request);
+
+    assertThat(response.getExists()).isFalse();
+  }
 }

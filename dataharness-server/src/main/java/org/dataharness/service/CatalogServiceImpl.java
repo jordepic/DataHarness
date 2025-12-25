@@ -362,6 +362,35 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   }
 
   /**
+   * Checks if a table exists in the DataHarnessTable catalog.
+   *
+   * @param request          The table exists request
+   * @param responseObserver The observer to send the response to
+   */
+  @Override
+  public void tableExists(TableExistsRequest request, StreamObserver<TableExistsResponse> responseObserver) {
+    try (Session session = HibernateSessionManager.getSession()) {
+      String tableName = request.getTableName();
+
+      if (tableName.isEmpty()) {
+        responseObserver.onError(new IllegalArgumentException("Table name cannot be null or empty"));
+        return;
+      }
+
+      DataHarnessTable table = findTableByName(session, tableName);
+      boolean exists = table != null;
+
+      TableExistsResponse response = TableExistsResponse.newBuilder().setExists(exists).build();
+
+      responseObserver.onNext(response);
+      responseObserver.onCompleted();
+    } catch (Exception e) {
+      logger.error("Error checking if table exists", e);
+      responseObserver.onError(e);
+    }
+  }
+
+  /**
    * Drops a DataHarnessTable and all of its associated sources.
    *
    * @param request          The drop table request
