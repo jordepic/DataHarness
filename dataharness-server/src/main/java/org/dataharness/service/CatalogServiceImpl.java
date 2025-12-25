@@ -198,83 +198,101 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   public void loadTable(LoadTableRequest request, StreamObserver<LoadTableResponse> responseObserver) {
 
     try (Session session = HibernateSessionManager.getSession()) {
+      Transaction transaction = session.beginTransaction();
 
       String tableName = request.getTableName();
 
       if (tableName.isEmpty()) {
+        transaction.rollback();
         responseObserver.onError(new IllegalArgumentException("Table name cannot be null or empty"));
         return;
       }
 
       DataHarnessTable table = findTableByName(session, tableName);
       if (table == null) {
+        transaction.rollback();
         responseObserver.onError(new IllegalArgumentException("Table not found: " + tableName));
         return;
       }
 
-      long tableId = table.getId();
+      try {
+        long tableId = table.getId();
 
-      List<KafkaSourceEntity> kafkaSources = findAllKafkaSources(session, tableId);
-      List<IcebergSourceEntity> icebergSources = findAllIcebergSources(session, tableId);
-      List<YugabyteSourceEntity> yugabyteSources = findAllYugabyteSources(session, tableId);
+        List<KafkaSourceEntity> kafkaSources = findAllKafkaSources(session, tableId);
+        List<IcebergSourceEntity> icebergSources = findAllIcebergSources(session, tableId);
+        List<YugabyteSourceEntity> yugabyteSources = findAllYugabyteSources(session, tableId);
 
-      LoadTableResponse.Builder responseBuilder = LoadTableResponse.newBuilder();
-      if (table.getAvroSchema() != null) {
-        responseBuilder.setAvroSchema(table.getAvroSchema());
+        transaction.commit();
+
+        LoadTableResponse.Builder responseBuilder = LoadTableResponse.newBuilder();
+        if (table.getAvroSchema() != null) {
+          responseBuilder.setAvroSchema(table.getAvroSchema());
+        }
+        if (table.getIcebergSchema() != null) {
+          responseBuilder.setIcebergSchema(table.getIcebergSchema());
+        }
+        if (table.getProtobufSchema() != null) {
+          responseBuilder.setProtobufSchema(table.getProtobufSchema());
+        }
+
+        for (KafkaSourceEntity kafka : kafkaSources) {
+          KafkaSourceMessage kafkaMsg = KafkaSourceMessage.newBuilder()
+            .setTrinoCatalogName(kafka.getTrinoCatalogName()).setTrinoSchemaName(kafka.getTrinoSchemaName())
+            .setStartOffset(kafka.getStartOffset()).setEndOffset(kafka.getEndOffset())
+            .setPartitionNumber(kafka.getPartitionNumber()).setTopicName(kafka.getTopicName()).build();
+
+          TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
+            .setKafkaSource(kafkaMsg).build();
+
+          responseBuilder.addSources(sourceMessage);
+        }
+
+        for (IcebergSourceEntity iceberg : icebergSources) {
+          IcebergSourceMessage icebergMsg = IcebergSourceMessage.newBuilder()
+            .setTrinoCatalogName(iceberg.getTrinoCatalogName())
+            .setTrinoSchemaName(iceberg.getTrinoSchemaName()).setTableName(iceberg.getTableName())
+            .setReadTimestamp(iceberg.getReadTimestamp())
+            .setSparkCatalogName(iceberg.getSparkCatalogName() != null ? iceberg.getSparkCatalogName() : "")
+            .setSparkSchemaName(iceberg.getSparkSchemaName() != null ? iceberg.getSparkSchemaName() : "")
+            .build();
+
+          TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
+            .setIcebergSource(icebergMsg).build();
+
+          responseBuilder.addSources(sourceMessage);
+        }
+
+        for (YugabyteSourceEntity yugabyte : yugabyteSources) {
+          YugabyteDBSourceMessage yugabyteMsg = YugabyteDBSourceMessage.newBuilder()
+            .setTrinoCatalogName(yugabyte.getTrinoCatalogName())
+            .setTrinoSchemaName(yugabyte.getTrinoSchemaName())
+            .setTableName(yugabyte.getTableName())
+            .setJdbcUrl(yugabyte.getJdbcUrl())
+            .setUsername(yugabyte.getUsername())
+            .setPassword(yugabyte.getPassword())
+            .setReadTimestamp(yugabyte.getReadTimestamp()).build();
+
+          TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
+            .setYugabytedbSource(yugabyteMsg).build();
+
+          responseBuilder.addSources(sourceMessage);
+        }
+
+        responseObserver.onNext(responseBuilder.build());
+        responseObserver.onCompleted();
+      } catch (Exception e) {
+        try {
+          if (transaction.isActive()) {
+            transaction.rollback();
+          }
+        } catch (Exception rollbackEx) {
+          logger.warn("Error rolling back transaction", rollbackEx);
+        }
+        logger.error("Error loading table", e);
+        responseObserver.onError(e);
       }
-      if (table.getIcebergSchema() != null) {
-        responseBuilder.setIcebergSchema(table.getIcebergSchema());
-      }
-      if (table.getProtobufSchema() != null) {
-        responseBuilder.setProtobufSchema(table.getProtobufSchema());
-      }
-
-      for (KafkaSourceEntity kafka : kafkaSources) {
-        KafkaSourceMessage kafkaMsg = KafkaSourceMessage.newBuilder()
-          .setTrinoCatalogName(kafka.getTrinoCatalogName()).setTrinoSchemaName(kafka.getTrinoSchemaName())
-          .setStartOffset(kafka.getStartOffset()).setEndOffset(kafka.getEndOffset())
-          .setPartitionNumber(kafka.getPartitionNumber()).setTopicName(kafka.getTopicName()).build();
-
-        TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
-          .setKafkaSource(kafkaMsg).build();
-
-        responseBuilder.addSources(sourceMessage);
-      }
-
-      for (IcebergSourceEntity iceberg : icebergSources) {
-        IcebergSourceMessage icebergMsg = IcebergSourceMessage.newBuilder()
-          .setTrinoCatalogName(iceberg.getTrinoCatalogName())
-          .setTrinoSchemaName(iceberg.getTrinoSchemaName()).setTableName(iceberg.getTableName())
-          .setReadTimestamp(iceberg.getReadTimestamp())
-          .setSparkCatalogName(iceberg.getSparkCatalogName() != null ? iceberg.getSparkCatalogName() : "")
-          .setSparkSchemaName(iceberg.getSparkSchemaName() != null ? iceberg.getSparkSchemaName() : "")
-          .build();
-
-        TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
-          .setIcebergSource(icebergMsg).build();
-
-        responseBuilder.addSources(sourceMessage);
-      }
-
-      for (YugabyteSourceEntity yugabyte : yugabyteSources) {
-        YugabyteDBSourceMessage yugabyteMsg = YugabyteDBSourceMessage.newBuilder()
-          .setTrinoCatalogName(yugabyte.getTrinoCatalogName())
-          .setTrinoSchemaName(yugabyte.getTrinoSchemaName())
-          .setTableName(yugabyte.getTableName())
-          .setJdbcUrl(yugabyte.getJdbcUrl())
-          .setUsername(yugabyte.getUsername())
-          .setPassword(yugabyte.getPassword())
-          .setReadTimestamp(yugabyte.getReadTimestamp()).build();
-
-        TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
-          .setYugabytedbSource(yugabyteMsg).build();
-
-        responseBuilder.addSources(sourceMessage);
-      }
-
-      responseObserver.onNext(responseBuilder.build());
-      responseObserver.onCompleted();
     } catch (Exception e) {
+      logger.error("Error loading table - session failure", e);
       responseObserver.onError(e);
     }
   }
