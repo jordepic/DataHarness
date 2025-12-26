@@ -108,8 +108,8 @@ public class DataPopulatorIntegrationTest {
         .setTrinoSchemaName("default")
         .setTableName(ICEBERG_TABLE_NAME)
         .setReadTimestamp(icebergResult.snapshotId)
-        .setSparkCatalogName("spark_catalog")
-        .setSparkSchemaName("spark_schema")
+        .setSparkCatalogName("gravitino")
+        .setSparkSchemaName("default")
         .build();
 
       SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
@@ -322,12 +322,6 @@ public class DataPopulatorIntegrationTest {
       .commit();
 
     long snapshotId = table.currentSnapshot().snapshotId();
-
-    try {
-      table.io().deleteFile(fileLocation);
-    } catch (Exception e) {
-      // File cleanup, ignore errors
-    }
 
     return new IcebergPopulationResult(icebergSchemaJson, snapshotId);
   }
