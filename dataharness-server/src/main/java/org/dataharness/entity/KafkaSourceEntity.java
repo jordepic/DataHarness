@@ -41,6 +41,15 @@ public class KafkaSourceEntity {
   @Column(name = "topic_name", nullable = false)
   private String topicName;
 
+  @Column(name = "broker_urls")
+  private String brokerUrls;
+
+  @Column(name = "schema_type")
+  private int schemaType;
+
+  @Column(name = "schema")
+  private String schema;
+
   public KafkaSourceEntity() {
   }
 
@@ -53,6 +62,21 @@ public class KafkaSourceEntity {
     this.endOffset = endOffset;
     this.partitionNumber = partitionNumber;
     this.topicName = topicName;
+  }
+
+  public KafkaSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, long startOffset,
+                           long endOffset, int partitionNumber, String topicName, String brokerUrls,
+                           int schemaType, String schema) {
+    this.tableId = tableId;
+    this.trinoCatalogName = trinoCatalogName;
+    this.trinoSchemaName = trinoSchemaName;
+    this.startOffset = startOffset;
+    this.endOffset = endOffset;
+    this.partitionNumber = partitionNumber;
+    this.topicName = topicName;
+    this.brokerUrls = brokerUrls;
+    this.schemaType = schemaType;
+    this.schema = schema;
   }
 
   public long getId() {
@@ -117,5 +141,29 @@ public class KafkaSourceEntity {
 
   public void setTopicName(String topicName) {
     this.topicName = topicName;
+  }
+
+  public String getBrokerUrls() {
+    return brokerUrls;
+  }
+
+  public void setBrokerUrls(String brokerUrls) {
+    this.brokerUrls = brokerUrls;
+  }
+
+  public int getSchemaType() {
+    return schemaType;
+  }
+
+  public void setSchemaType(int schemaType) {
+    this.schemaType = schemaType;
+  }
+
+  public String getSchema() {
+    return schema;
+  }
+
+  public void setSchema(String schema) {
+    this.schema = schema;
   }
 }

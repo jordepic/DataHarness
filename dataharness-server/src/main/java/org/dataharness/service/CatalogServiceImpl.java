@@ -119,11 +119,15 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
               existing.setTrinoSchemaName(kafkaMsg.getTrinoSchemaName());
               existing.setStartOffset(kafkaMsg.getStartOffset());
               existing.setEndOffset(kafkaMsg.getEndOffset());
+              existing.setBrokerUrls(kafkaMsg.getBrokerUrls());
+              existing.setSchemaType(kafkaMsg.getSchemaType().getNumber());
+              existing.setSchema(kafkaMsg.getSchema());
               session.merge(existing);
             } else {
               KafkaSourceEntity entity = new KafkaSourceEntity(tableId, kafkaMsg.getTrinoCatalogName(),
                 kafkaMsg.getTrinoSchemaName(), kafkaMsg.getStartOffset(), kafkaMsg.getEndOffset(),
-                kafkaMsg.getPartitionNumber(), kafkaMsg.getTopicName());
+                kafkaMsg.getPartitionNumber(), kafkaMsg.getTopicName(), kafkaMsg.getBrokerUrls(),
+                kafkaMsg.getSchemaType().getNumber(), kafkaMsg.getSchema());
               session.persist(entity);
             }
           } else if (sourceUpdate.hasIcebergSource()) {
@@ -236,10 +240,24 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         }
 
         for (KafkaSourceEntity kafka : kafkaSources) {
-          KafkaSourceMessage kafkaMsg = KafkaSourceMessage.newBuilder()
+          KafkaSourceMessage.Builder kafkaMsgBuilder = KafkaSourceMessage.newBuilder()
             .setTrinoCatalogName(kafka.getTrinoCatalogName()).setTrinoSchemaName(kafka.getTrinoSchemaName())
             .setStartOffset(kafka.getStartOffset()).setEndOffset(kafka.getEndOffset())
-            .setPartitionNumber(kafka.getPartitionNumber()).setTopicName(kafka.getTopicName()).build();
+            .setPartitionNumber(kafka.getPartitionNumber()).setTopicName(kafka.getTopicName());
+
+          if (kafka.getBrokerUrls() != null && !kafka.getBrokerUrls().isEmpty()) {
+            kafkaMsgBuilder.setBrokerUrls(kafka.getBrokerUrls());
+          }
+
+          if (kafka.getSchemaType() != 0) {
+            kafkaMsgBuilder.setSchemaType(SchemaType.forNumber(kafka.getSchemaType()));
+          }
+
+          if (kafka.getSchema() != null && !kafka.getSchema().isEmpty()) {
+            kafkaMsgBuilder.setSchema(kafka.getSchema());
+          }
+
+          KafkaSourceMessage kafkaMsg = kafkaMsgBuilder.build();
 
           TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
             .setKafkaSource(kafkaMsg).build();

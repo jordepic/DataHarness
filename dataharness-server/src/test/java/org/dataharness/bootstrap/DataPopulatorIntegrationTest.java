@@ -332,24 +332,6 @@ public class DataPopulatorIntegrationTest {
       .build();
 
     LoadTableResponse response = stub.loadTable(request);
-
-    int schemaCount = 0;
-    if (response.hasAvroSchema()) {
-      schemaCount++;
-    }
-    if (response.hasIcebergSchema()) {
-      schemaCount++;
-    }
-    if (response.hasProtobufSchema()) {
-      schemaCount++;
-    }
-
-    for (TableSourceMessage source : response.getSourcesList()) {
-      if (source.hasKafkaSource()) {
-      } else if (source.hasIcebergSource()) {
-      } else if (source.hasYugabytedbSource()) {
-      }
-    }
   }
 
   private void deleteYugabyteTable() {
