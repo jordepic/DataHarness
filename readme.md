@@ -2,214 +2,164 @@
 
 ## Project Overview
 
-**DataHarness** is a unified data integration platform that consolidates diverse data sources—including message
-brokers (Kafka), relational databases, and lakehouse/object store systems (Iceberg)—into a single queryable table. It
-simplifies data insertion by providing exactly-once semantics, eliminating the need for complex streaming technologies
-and infrastructure.
+In the past years, we've seen the proliferation of new table formats for analyzing big data. While these
+work well enough for many analytical workloads, the role of the lake-house keeps expanding, and more development
+work goes into making "hybrid" solutions.
 
-### Key Intentions
+Examples:
 
-- **Unified Access**: Query data from multiple sources through a single interface
-- **Simplified Insertion**: Built-in exactly-once semantics for reliable data ingestion without complex streaming
-  frameworks
-- **Multi-Source Support**: Seamlessly integrate Kafka topics, Iceberg tables, relational databases, and more
-- **Extensible Architecture**: Pluggable design for adding new data sources
+- Hybrid kafka/iceberg topics (RedPanda, Streambased, Confluent)
+- Various delete semantics in lakehouses (positional/equality/deletion vectors)
+- Mixing lakehouses with transactional databases (Mooncake/Crunchy Data)
+- Proprietary "HTAP" solutions for hybrid processing (DataBricks, Snowflake)
+- Streaming connectors between kafka and iceberg for exactly once processing (Kafka Connect, Flink)
 
-## Key Services & APIs
+**DataHarness** aims to remove the need for the proprietary technology to fuse data sources,
+and let teams bring their own data sources. This should allow you to use the technology best
+suited towards your pipeline.
 
-### CatalogService (gRPC)
+## Key Intentions
 
-The main service exposed via gRPC with the following RPC methods:
+- **Unified Access**: One DataHarness table can contain data from many different sources
+- **Simplified Insertion**: Single metadata store ensures that you never see data across sources in an inconsistent
+  state, eliminating the need to use Flink/Kafka Connect for simple pipelines
+- **Multi-Source Support**: Seamlessly integrate Kafka topics, relational databases, data lakes, and more
+- **Multi-Query Engine Support**: Currently developing for Spark and Trino, with plans to expand
 
-#### **CreateTable**
+## What Can Be A Data Source?
 
-- **Request**: `CreateTableRequest` with table name
-- **Response**: `CreateTableResponse` with table ID and status
+For a data system to work as a "source" for a harness table, it must only satisfy one constraint:
 
-#### **UpsertSource**
+- It must be able to provide an API to see state at a prior period of time
+- In Kafka, you can specify offsets to read between and get the same data back, regardless of if there are new messages
+- In Iceberg/YugabyteDB, you can specify a read timestamp to see historic state of a table
 
-- **Request**: `UpsertSourceRequest` with table name and source configuration (Kafka, Iceberg, or YugabyteDB)
-- **Response**: `UpsertSourceResponse` with success status
+What does this mean?
 
-#### **LoadTable**
+- In their vanilla state, we cannot support MySQL and PostgresSQL as first class citizens of DataHarness
+- However, we can support MySQL and PostgresSQL wire-protocol compliant databases like TiDB and YugabyteDB
 
-- **Request**: `LoadTableRequest` with table name
-- **Response**: `LoadTableResponse` with table schemas (Avro, Iceberg, and/or Protocol Buffers) and list of sources (Kafka, Iceberg, and/or YugabyteDB)
-- Retrieves a table along with its associated schemas and configured data sources
+## Creating A DataHarness Table
 
-#### **ListTables**
-
-- **Request**: `ListTablesRequest` (empty request)
-- **Response**: `ListTablesResponse` with list of all table names in the catalog
-
-#### **SetSchema**
-
-- **Request**: `SetSchemaRequest` with table name and optional `avro_schema`, `iceberg_schema`, and/or `protobuf_schema` fields
-- **Response**: `SetSchemaResponse` with success status
-- Allows associating Avro, Iceberg, and/or Protocol Buffers schemas with a DataHarness table
-- Schemas are persisted and returned when loading tables
-
-#### **DropTable**
-
-- **Request**: `DropTableRequest` with table name
-- **Response**: `DropTableResponse` with success status and message
-- Drops a table and all of its associated sources (Kafka, Iceberg, and YugabyteDB)
-- Performs cascading deletion of all sources linked to the table
-
-#### **TableExists**
-
-- **Request**: `TableExistsRequest` with table name
-- **Response**: `TableExistsResponse` with boolean `exists` field
-- Checks whether a table exists in the catalog without loading its sources or schemas
-- Provides efficient table existence verification by querying only the DataHarnessTable entity
-
-### Data Source Support
-
-#### **Kafka Source**
-
-- Trino catalog and schema configuration
-- Partition-level offset management (start/end offsets)
-- Topic-based sourcing
-- Broker URL list for cluster connectivity
-- Schema type support (Avro or Protocol Buffers)
-- Schema storage for message serialization format
-
-#### **Iceberg Source**
-
-- Trino integration (catalog and schema configuration)
-- Spark integration (catalog and schema configuration)
-- Time-travel support via read timestamp
-- Table-level management
-
-#### **YugabyteDB Source**
-
-- PostgreSQL-compatible relational database
-- JDBC connection configuration
-- Table-level management with read timestamp support
-- Supports time-travel queries through read timestamp field
-
-## Database Models
-
-### DataHarnessTable
-
-Represents a managed table in the system with associated metadata, including:
-
-- Table name (unique identifier)
-- Avro schema (optional nullable string for schema definitions)
-- Iceberg schema (optional nullable string for schema definitions)
-- Protocol Buffers schema (optional nullable string for schema definitions)
-
-### KafkaSourceEntity
-
-Persists Kafka source configuration including:
-
-- Trino catalog/schema mapping
-- Partition and offset information
-- Topic references
-- Broker URLs for cluster connectivity
-- Schema type (Avro or Protocol Buffers) as enum stored as string
-- Schema definition for message deserialization
-
-### IcebergSourceEntity
-
-Persists Iceberg source configuration including:
-
-- Trino catalog/schema mapping
-- Spark catalog/schema mapping
-- Table references
-- Temporal query support via read timestamp
-
-### YugabyteDBSourceEntity (In Development)
-
-Will persist YugabyteDB source configuration including:
-
-- JDBC connection details (URL, username, password)
-- Trino catalog/schema mapping
-- Table references
-- Read timestamp for temporal queries
-
-## Configuration
-
-### Database Connection
-
-Set via JVM flags (for container deployment):
-
-- `hibernate.connection.url` - PostgreSQL JDBC URL
-- `hibernate.connection.username` - Database user
-- `hibernate.connection.password` - Database password
-- `hibernate.hbm2ddl.auto` - Schema generation strategy
-
-Default Docker configuration:
+This example displays how to create a data harness table which contains data from a topic partition
+with avro-encoded data, an iceberg table, and a YugabyteDB table. The DataHarness is running on
+localhost:50051.
 
 ```
--Dhibernate.connection.url=jdbc:postgresql://postgres:5432/dataharness
--Dhibernate.connection.username=postgres
--Dhibernate.connection.password=postgres
--Dhibernate.hbm2ddl.auto=update
+      ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
+      CatalogServiceGrpc.CatalogServiceBlockingStub stub = CatalogServiceGrpc.newBlockingStub(channel);
+
+      CreateTableRequest createTableRequest = CreateTableRequest.newBuilder()
+        .setName(DATA_HARNESS_TABLE)
+        .build();
+
+      stub.createTable(createTableRequest);
+
+      KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+        .setTrinoCatalogName("kafka")
+        .setTrinoSchemaName("default")
+        .setTopicName(TOPIC)
+        .setStartOffset(0)
+        .setEndOffset(kafkaResult.messageCount)
+        .setPartitionNumber(0)
+        .setBrokerUrls(BOOTSTRAP_SERVERS)
+        .setSchemaType(SchemaType.AVRO)
+        .setSchema(kafkaResult.avroSchema)
+        .build();
+
+      SourceUpdate kafkaSourceUpdate = SourceUpdate.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setKafkaSource(kafkaSource)
+        .build();
+
+      UpsertSourcesRequest.Builder upsertSourcesBuilder = UpsertSourcesRequest.newBuilder()
+        .addSources(kafkaSourceUpdate);
+
+      IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+        .setTrinoCatalogName("iceberg")
+        .setTrinoSchemaName("default")
+        .setTableName(ICEBERG_TABLE_NAME)
+        .setReadTimestamp(icebergResult.snapshotId)
+        .setSparkCatalogName("gravitino")
+        .setSparkSchemaName("default")
+        .build();
+
+      SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setIcebergSource(icebergSource)
+        .build();
+
+      upsertSourcesBuilder.addSources(icebergSourceUpdate);
+
+      YugabyteDBSourceMessage yugabyteSource = YugabyteDBSourceMessage.newBuilder()
+        .setTrinoCatalogName(NOT_IMPLEMENTED)
+        .setTrinoSchemaName(NOT_IMPLEMENTED)
+        .setTableName(YUGABYTE_TABLE_NAME)
+        .setJdbcUrl(YUGABYTE_JDBC_URL)
+        .setUsername(YUGABYTE_USER)
+        .setPassword(YUGABYTE_PASSWORD)
+        .setReadTimestamp(yugabyteTimestamp)
+        .build();
+
+      SourceUpdate yugabyteSourceUpdate = SourceUpdate.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setYugabytedbSource(yugabyteSource)
+        .build();
+
+      upsertSourcesBuilder.addSources(yugabyteSourceUpdate);
+
+      stub.upsertSources(upsertSourcesBuilder.build());
+
+      ProtobufSchema protobufSchemaObj = new ProtobufSchema(org.dataharness.test.TestMessage.getDescriptor());
+      String protobufSchema = protobufSchemaObj.canonicalString();
+
+      SetSchemaRequest.Builder schemaRequestBuilder = SetSchemaRequest.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setAvroSchema(kafkaResult.avroSchema)
+        .setProtobufSchema(protobufSchema);
+
+      schemaRequestBuilder.setIcebergSchema(icebergResult.icebergSchema);
+
+      SetSchemaRequest schemaRequest = schemaRequestBuilder.build();
+
+      stub.setSchema(schemaRequest);
 ```
 
-## Build & Deployment
+## Currently Supported
 
-### Maven Build
+|                                                              | Apache Spark | Apache Trino |
+|--------------------------------------------------------------|--------------|--------------|
+| Kafka with Avro Encoded Data (Confluent Schema Registry)     | ✅            | ✅            |
+| Kafka with Protobuf Encoded Data (Confluent Schema Registry) |              | ✅            |
+| Pulsar with Avro Encoded Data                                |              |              |
+| Pulsar with Protobuf Encoded Data                            |              |              |
+| Amazon Kinesis with Avro Encoded Data                        |              |              |
+| Amazon Kinesis with Protobuf Encoded Data                    |              |              |
+| Azure Event Hubs with Avro Encoded Data                      |              |              |
+| Azure Event Hubs with Protobuf Encoded Data                  |              |              |
+| YugaByteDB (Postgres compatible)                             | ✅            |              |
+| YugaByteDB (Cassandra compatible)                            |              |              |
+| CockroachDB (Postgres compatible)                            |              |              |
+| TiDB (MySQL compatible)                                      |              |              |
+| CockroachDB (Postgres compatible)                            |              |              |
+| Google Spanner                                               |              |              |
+| Apache Iceberg                                               | ✅            | ✅            |
+| Apache Hudi                                                  |              |              |
+| Delta Lake                                                   |              |              |
+| DuckLake                                                     |              |              |
 
-```bash
-mvn clean compile
-mvn test
-mvn package
-```
+Main supported features:
 
-### Code Formatting
+- Transfer data between data sources and atomically update their state in the DataHarness
+- Perform a rolling update of schemas and then atomically update the table schema in the DataHarness
+- Specify the table's schema in terms of Avro schema, Iceberg schema, or Protocol Buffers schema
 
-```bash
-mvn spotless:apply
-```
+Two main features that are not currently supported but we hope to support soon:
 
-### Docker Image
+- Primary key tables (right now the data from each table source is unioned together)
+- Schema evolutions are currently atomic, though tables may temporarily break due to modifying inner fields of complex
+  types
 
-```bash
-mvn jib:build
-```
+## Contributing Guide
 
-Produces image: `data-harness:latest`  
-Main class: `org.dataharness.Main`
-
-## Dependencies Management
-
-## Testing
-
-### Integration Tests
-
-- `CatalogServiceIntegrationTest` - Tests CatalogService functionality
-- Uses TestContainers for PostgreSQL isolation
-- Bootstrap utilities for test data population
-
-## Accomplished Features
-
-- ✅ **Table Creation**: Create and manage DataHarness tables with metadata persistence
-- ✅ **Table Deletion**: Drop tables with cascading deletion of all associated sources
-- ✅ **Table Existence Check**: Efficiently verify table existence without loading sources or schemas
-- ✅ **Kafka Source Integration**: Ingest data from Kafka topics with partition-level offset management
-- ✅ **Iceberg Source Integration**: Query Iceberg tables with time-travel support
-- ✅ **Source Management**: List and manage sources associated with a DataHarness table
-- ✅ **Multi-Schema Support**: Associate Avro, Iceberg, and Protocol Buffers schemas with DataHarness tables for flexible schema management
-- ✅ **Schema Persistence**: Schemas are persisted in the database and returned when loading tables
-- ✅ **gRPC API**: Complete service layer for catalog operations with CreateTable, DropTable, LoadTable, SetSchema, TableExists, and source management
-
-## Roadmap
-
-### Planned Data Sources
-
-- **YugabyteDB** (In Development) - PostgreSQL-compatible distributed SQL database
-- **Hudi**
-- **Delta Lake**
-- **TiDB**
-- **Google Spanner**
-
-### Query Engine Support
-
-- **In Progress**: Trino (production-ready for Kafka and Iceberg sources)
-- **Planned**: Spark (Apache Spark integration for additional compute capabilities)
-
-## License
-
-Copyright (c) 2025
+TODO
