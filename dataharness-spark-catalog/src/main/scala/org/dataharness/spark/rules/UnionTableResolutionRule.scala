@@ -15,7 +15,7 @@ case class UnionTableResolutionRule(spark: SparkSession) extends Rule[LogicalPla
     case relation: DataSourceV2Relation if relation.table.isInstanceOf[DataHarnessTable] =>
       val dataHarnessTable = relation.table.asInstanceOf[DataHarnessTable]
       val schema = dataHarnessTable.schema()
-      val sourceDataFrames = loadSourceDataFrames(dataHarnessTable.getResponse())
+      val sourceDataFrames = loadSourceDataFrames(dataHarnessTable.getResponse)
 
       if (sourceDataFrames.isEmpty) {
         relation
@@ -94,7 +94,7 @@ case class UnionTableResolutionRule(spark: SparkSession) extends Rule[LogicalPla
           "Kafka table has Protobuf encoding. from_protobuf requires proto definition " +
             "on classpath or file descriptor.")
       case org.dataharness.proto.SchemaType.AVRO =>
-        val avroSchema = kafkaSource.getSchema().replace("'", "\\'")
+        val avroSchema = kafkaSource.getSchema.replace("'", "\\'")
         kafkaDf.selectExpr(
           s"""from_avro(substring(value, 6), '$avroSchema') as val"""
         ).selectExpr("val.*")
