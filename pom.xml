@@ -12,12 +12,12 @@
   <modules>
     <module>dataharness-rpc</module>
     <module>dataharness-server</module>
+    <module>dataharness-spark-catalog</module>
   </modules>
 
   <properties>
     <revision>1.0-SNAPSHOT</revision>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <maven.compiler.release>11</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <grpc.version>1.77.0</grpc.version>
     <protobuf.version>4.31.1</protobuf.version>
@@ -37,6 +37,13 @@
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
     <iceberg.version>1.10.0</iceberg.version>
+    <spark.version>4.1.0</spark.version>
+    <sparkMajorVersion>4.0</sparkMajorVersion>
+    <spark.grpc.version>1.53.0</spark.grpc.version>
+    <spark.avro.version>1.11.0</spark.avro.version>
+    <spark.protobuf.version>3.21.9</spark.protobuf.version>
+    <mockito.version>5.12.0</mockito.version>
+    <commons-lang3.version>3.20.0</commons-lang3.version>
   </properties>
 
   <repositories>
@@ -48,6 +55,11 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.example</groupId>
+        <artifactId>dataharness-rpc</artifactId>
+        <version>${revision}</version>
+      </dependency>
       <dependency>
         <groupId>io.grpc</groupId>
         <artifactId>grpc-netty-shaded</artifactId>
@@ -193,6 +205,51 @@
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-mapreduce-client-core</artifactId>
         <version>3.4.0</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-sql_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-catalyst_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-avro_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-protobuf_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-core_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-tags_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.iceberg</groupId>
+        <artifactId>iceberg-spark-runtime-${sparkMajorVersion}_2.13</artifactId>
+        <version>${iceberg.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-core</artifactId>
+        <version>${mockito.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${commons-lang3.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

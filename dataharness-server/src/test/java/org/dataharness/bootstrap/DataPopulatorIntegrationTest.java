@@ -212,9 +212,9 @@ public class DataPopulatorIntegrationTest {
 
       for (KafkaTestRecord msg : messages) {
         GenericRecord record = new GenericData.Record(schema);
-        record.put("id", msg.id());
-        record.put("name", msg.name());
-        record.put("address", msg.address());
+        record.put("id", msg.id);
+        record.put("name", msg.name);
+        record.put("address", msg.address);
 
         producer.send(new ProducerRecord<>(TOPIC, record));
       }
@@ -409,15 +409,40 @@ public class DataPopulatorIntegrationTest {
     }
   }
 
-  record KafkaTestRecord(int id, String name, String address) {
+  public static class KafkaTestRecord {
+
+    public int id;
+    public String name;
+    public String address;
+
+    public KafkaTestRecord(int id, String name, String address) {
+      this.id = id;
+      this.name = name;
+      this.address = address;
+    }
+  }
+
+  public static class KafkaPopulationResult {
+
+    public String avroSchema;
+    public long messageCount;
+
+    public KafkaPopulationResult(String avroSchema, long messageCount) {
+      this.avroSchema = avroSchema;
+      this.messageCount = messageCount;
+    }
+  }
+
+  public static class IcebergPopulationResult {
+
+    public String icebergSchema;
+    public long snapshotId;
+
+    public IcebergPopulationResult(String icebergSchema, long snapshotId) {
+      this.icebergSchema = icebergSchema;
+      this.snapshotId = snapshotId;
+    }
 
   }
 
-  record KafkaPopulationResult(String avroSchema, long messageCount) {
-
-  }
-
-  record IcebergPopulationResult(String icebergSchema, long snapshotId) {
-
-  }
 }

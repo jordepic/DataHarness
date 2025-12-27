@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ScalaCompilerConfiguration">
+    <profile name="Maven 1" modules="dataharness-spark-1">
+      <option name="compileOrder" value="JavaThenScala" />
+      <parameters>
+        <parameter value="-target:jvm-17" />
+      </parameters>
+    </profile>
+  </component>
+</project>
