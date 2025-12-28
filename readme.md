@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-In the past years, we've seen the proliferation of new table formats for analyzing big data. While these
+In the past few years, we've seen the proliferation of new table formats for analyzing big data. While these
 work well enough for many analytical workloads, the role of the lake-house keeps expanding, and more development
 work goes into making "hybrid" solutions.
 
@@ -31,6 +31,9 @@ suited towards your pipeline.
 For a data system to work as a "source" for a harness table, it must only satisfy one constraint:
 
 - It must be able to provide an API to see state at a prior period of time
+
+Examples:
+
 - In Kafka, you can specify offsets to read between and get the same data back, regardless of if there are new messages
 - In Iceberg/YugabyteDB, you can specify a read timestamp to see historic state of a table
 
@@ -146,7 +149,10 @@ localhost:50051.
 | Apache Iceberg                                               | ✅            | ✅            |
 | Apache Hudi                                                  |              |              |
 | Delta Lake                                                   |              |              |
-| DuckLake                                                     |              |              |
+| Duck Lake                                                    |              |              |
+| Avro Files                                                   |              |              |
+| Parquet Files                                                |              |              |
+| Orc Files                                                    |              |              |
 
 Main supported features:
 
@@ -159,6 +165,45 @@ Two main features that are not currently supported but we hope to support soon:
 - Primary key tables (right now the data from each table source is unioned together)
 - Schema evolutions are currently atomic, though tables may temporarily break due to modifying inner fields of complex
   types
+
+## Reading Data Harness Tables From Apache Spark
+
+This repository exposes a spark catalog that you can set up very easily. To do so, create your spark program as follows:
+
+```bash
+./bin/spark-sql --packages org.example:dataharness-spark-catalog:1.0-SNAPSHOT
+--conf spark.sql.catalog.harness=org.dataharness.spark.DataHarnessCatalog
+--conf spark.sql.extensions=org.dataharness.spark.DataHarnessExtension
+--conf spark.sql.catalog.harness.data-harness-host=data-harness
+--conf spark.sql.catalog.harness.data-harness-port=50051
+```
+
+This creates a DataHarness catalog called `harness`. To query it, you can run:
+`SELECT * FROM harness.data_harness.<table_name>;` -> Note that `data_harness` is currently the only supported namespace
+
+While the above configuration allows using the DataHarness catalog, it does not import any dependencies that might
+be needed to read:
+
+- Avro data
+- Protobuf data
+- Iceberg data
+- And so on...
+
+You can
+see [our integration test docker compose file](./dataharness-server/src/test/java/org/dataharness/bootstrap/docker-compose.yaml)
+for an example of us runnning with an iceberg catalog, a YugabyteDB table, and a kafka topic with avro-encoded data.
+
+NOTE:
+
+- For iceberg tables, the "spark catalog" and "spark namespace" should be equal to the name of the catalog in spark and
+  its namespace
+- For kafka topic partitions, spark needs to know the broker URLs for each source, there is no "kafka catalog"
+    - It needs to know the schema as well, there is no schema registry support for the time being
+- For JDBC tables, the jdbc url, username, password, etc... will all need to be specified in the source
+
+## Reading Data Harness Tables From Apache Trino
+
+TODO
 
 ## Contributing Guide
 
