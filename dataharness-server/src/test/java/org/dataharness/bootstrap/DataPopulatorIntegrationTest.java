@@ -36,7 +36,14 @@ import org.dataharness.proto.*;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 
+import java.net.URI;
 import java.sql.*;
 import java.util.*;
 
@@ -61,6 +68,10 @@ public class DataPopulatorIntegrationTest {
   private static final String YUGABYTE_USER = "yugabyte";
   private static final String YUGABYTE_PASSWORD = "";
   private static final String TABLE_SCHEMA = "id INT PRIMARY KEY, name TEXT, address TEXT";
+  private static final String MINIO_ENDPOINT = "http://localhost:9000";
+  private static final String MINIO_ACCESS_KEY = "minioadmin";
+  private static final String MINIO_SECRET_KEY = "minioadmin";
+  private static final String MINIO_BUCKET = "iceberg-bucket";
 
   @Test
   public void bootstrapDataHarness() throws Exception {
@@ -245,6 +256,9 @@ public class DataPopulatorIntegrationTest {
   }
 
   public IcebergPopulationResult populateIceberg() throws Exception {
+    System.setProperty("aws.region", "us-east-1");
+    
+    createMinIOBucket();
 
     org.apache.iceberg.Schema icebergSchema = new org.apache.iceberg.Schema(
       Types.NestedField.required(1, "id", Types.IntegerType.get()),
@@ -256,6 +270,11 @@ public class DataPopulatorIntegrationTest {
 
     Map<String, String> properties = new HashMap<>();
     properties.put("uri", "http://localhost:9001/iceberg");
+    properties.put("s3.endpoint", MINIO_ENDPOINT);
+    properties.put("s3.access-key-id", MINIO_ACCESS_KEY);
+    properties.put("s3.secret-access-key", MINIO_SECRET_KEY);
+    properties.put("s3.path-style-access", "true");
+    properties.put("s3.region", "us-east-1");
 
     RESTCatalog catalog = new RESTCatalog();
     catalog.initialize("rest", properties);
@@ -293,7 +312,7 @@ public class DataPopulatorIntegrationTest {
     record3.setField("address", "789 Catalog Ln");
     records.add(record3);
 
-    String fileLocation = "/tmp/data.parquet";
+    String fileLocation = "s3://iceberg-bucket/data.parquet";
     try {
       table.io().deleteFile(fileLocation);
     } catch (Exception e) {
@@ -332,6 +351,35 @@ public class DataPopulatorIntegrationTest {
       .build();
 
     LoadTableResponse response = stub.loadTable(request);
+  }
+
+  private void createMinIOBucket() {
+    try {
+      AwsBasicCredentials credentials = AwsBasicCredentials.create(MINIO_ACCESS_KEY, MINIO_SECRET_KEY);
+      S3Client s3Client = S3Client.builder()
+        .credentialsProvider(StaticCredentialsProvider.create(credentials))
+        .endpointOverride(URI.create(MINIO_ENDPOINT))
+        .region(Region.US_EAST_1)
+        .forcePathStyle(true)
+        .build();
+
+      try {
+        HeadBucketRequest headRequest = HeadBucketRequest.builder()
+          .bucket(MINIO_BUCKET)
+          .build();
+        s3Client.headBucket(headRequest);
+      } catch (Exception e) {
+        CreateBucketRequest createRequest = CreateBucketRequest.builder()
+          .bucket(MINIO_BUCKET)
+          .build();
+        s3Client.createBucket(createRequest);
+        logger.info("Created MinIO bucket: {}", MINIO_BUCKET);
+      }
+
+      s3Client.close();
+    } catch (Exception e) {
+      logger.warn("Failed to create MinIO bucket: {}", e.getMessage());
+    }
   }
 
   private void deleteYugabyteTable() {
