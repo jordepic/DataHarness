@@ -17,6 +17,23 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.example</groupId>
+      <artifactId>dataharness-rpc</artifactId>
+      <version>${revision}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-netty-shaded</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_2.13</artifactId>
       <scope>provided</scope>
@@ -37,11 +54,6 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.example</groupId>
-      <artifactId>dataharness-rpc</artifactId>
-      <version>${revision}</version>
-    </dependency>
-    <dependency>
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-core</artifactId>
       <scope>provided</scope>
@@ -50,18 +62,6 @@
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-spark-runtime-${sparkMajorVersion}_2.13</artifactId>
       <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-netty-shaded</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-protobuf</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-stub</artifactId>
     </dependency>
 
   </dependencies>

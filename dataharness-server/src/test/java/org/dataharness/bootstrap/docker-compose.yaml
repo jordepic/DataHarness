@@ -59,7 +59,7 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -113,3 +113,75 @@ services:
       - kafka-net
     ports:
       - "50051:50051"
+
+  spark:
+    image: apache/spark:latest
+    container_name: spark
+    depends_on:
+      - kafka
+      - schema-registry
+      - minio
+      - gravitino-iceberg-rest
+      - postgres
+      - yugabytedb
+      - data-harness
+    networks:
+      - kafka-net
+    ports:
+      - "15002:15002"
+      - "4040:4040"
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    tmpfs:
+      - /nonexistent
+    volumes:
+      - ../../../../../../../dataharness-spark-catalog/target/dataharness-spark-catalog-1.0-SNAPSHOT.jar:/app/jars/dataharness-spark-catalog-1.0-SNAPSHOT.jar:ro
+      - ../../../../../../../dataharness-rpc/target/dataharness-rpc-1.0-SNAPSHOT.jar:/app/jars/dataharness-rpc-1.0-SNAPSHOT.jar:ro
+    command:
+      - /opt/spark/bin/spark-submit
+      - --class
+      - org.apache.spark.sql.connect.service.SparkConnectServer
+      - --jars
+      - /app/jars/dataharness-spark-catalog-1.0-SNAPSHOT.jar,/app/jars/dataharness-rpc-1.0-SNAPSHOT.jar
+      - --packages
+      - org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.0,org.apache.spark:spark-avro_2.13:4.1.0,org.postgresql:postgresql:42.7.3,org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.10.0,org.apache.hadoop:hadoop-aws:3.4.0,com.amazonaws:aws-java-sdk-bundle:1.12.780,io.grpc:grpc-netty-shaded:1.77.0,io.grpc:grpc-protobuf:1.77.0,io.grpc:grpc-stub:1.77.0,com.google.protobuf:protobuf-java:4.31.1
+      - --conf
+      - spark.sql.catalog.gravitino=org.apache.iceberg.spark.SparkCatalog
+      - --conf
+      - spark.sql.catalog.gravitino.uri=http://gravitino-iceberg-rest:9001/iceberg
+      - --conf
+      - spark.sql.catalog.gravitino.type=rest
+      - --conf
+      - spark.sql.catalog.gravitino.s3.access-key-id=minioadmin
+      - --conf
+      - spark.sql.catalog.gravitino.s3.secret-access-key=minioadmin
+      - --conf
+      - spark.sql.catalog.gravitino.s3.endpoint=http://minio:9000
+      - --conf
+      - spark.sql.catalog.gravitino.s3.path-style-access=true
+      - --conf
+      - spark.sql.catalog.harness=org.dataharness.spark.DataHarnessCatalog
+      - --conf
+      - spark.sql.catalog.harness.data-harness-host=data-harness
+      - --conf
+      - spark.sql.catalog.harness.data-harness-port=50051
+      - --conf
+      - spark.sql.extensions=org.dataharness.spark.DataHarnessExtension
+      - --conf
+      - spark.hadoop.fs.s3a.access.key=minioadmin
+      - --conf
+      - spark.hadoop.fs.s3a.secret.key=minioadmin
+      - --conf
+      - spark.hadoop.fs.s3a.endpoint=http://minio:9000
+      - --conf
+      - spark.hadoop.fs.s3a.region=us-east-1
+      - --conf
+      - spark.hadoop.fs.s3a.path.style.access=true
+      - --conf
+      - spark.hadoop.fs.s3a.connection.ssl.enabled=false
+      - --conf
+      - spark.hadoop.fs.s3a.impl.disable.cache=true
+      - --name
+      - spark-connect-server

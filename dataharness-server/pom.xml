@@ -160,6 +160,12 @@
       <version>2.24.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect-client-jvm_2.13</artifactId>
+      <version>4.1.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -177,6 +183,15 @@
               <content>// Copyright (c) 2025</content>
             </licenseHeader>
           </java>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <argLine>--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED</argLine>
         </configuration>
       </plugin>
 

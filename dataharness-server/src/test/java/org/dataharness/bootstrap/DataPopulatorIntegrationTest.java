@@ -32,6 +32,9 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.connect.Dataset;
+import org.apache.spark.sql.connect.SparkSession;
 import org.dataharness.proto.*;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -42,10 +45,13 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
+import software.amazon.awssdk.services.s3.model.PutBucketPolicyRequest;
 
 import java.net.URI;
 import java.sql.*;
 import java.util.*;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration test that populates Kafka, YugabyteDB, Iceberg, and DataHarness with test data.
@@ -59,12 +65,14 @@ public class DataPopulatorIntegrationTest {
   public static final String NOT_IMPLEMENTED = "";
   private static final Logger logger = LoggerFactory.getLogger(DataPopulatorIntegrationTest.class);
   private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+  private static final String BOOTSTRAP_SERVERS_FOR_SPARK = "kafka:29092";
   private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
   private static final String TOPIC = "kafka_avro_test";
   private static final String DATA_HARNESS_TABLE = "bootstrap";
   private static final String ICEBERG_TABLE_NAME = "iceberg_test";
   private static final String YUGABYTE_TABLE_NAME = "yugabyte_test";
   private static final String YUGABYTE_JDBC_URL = "jdbc:postgresql://localhost:5433/yugabyte?sslmode=disable";
+  private static final String YUGABYTE_JDBC_URL_FOR_SPARK = "jdbc:postgresql://yugabytedb:5433/yugabyte?sslmode=disable";
   private static final String YUGABYTE_USER = "yugabyte";
   private static final String YUGABYTE_PASSWORD = "";
   private static final String TABLE_SCHEMA = "id INT PRIMARY KEY, name TEXT, address TEXT";
@@ -101,7 +109,7 @@ public class DataPopulatorIntegrationTest {
         .setStartOffset(0)
         .setEndOffset(kafkaResult.messageCount)
         .setPartitionNumber(0)
-        .setBrokerUrls(BOOTSTRAP_SERVERS)
+        .setBrokerUrls(BOOTSTRAP_SERVERS_FOR_SPARK)
         .setSchemaType(SchemaType.AVRO)
         .setSchema(kafkaResult.avroSchema)
         .build();
@@ -134,7 +142,7 @@ public class DataPopulatorIntegrationTest {
         .setTrinoCatalogName(NOT_IMPLEMENTED)
         .setTrinoSchemaName(NOT_IMPLEMENTED)
         .setTableName(YUGABYTE_TABLE_NAME)
-        .setJdbcUrl(YUGABYTE_JDBC_URL)
+        .setJdbcUrl(YUGABYTE_JDBC_URL_FOR_SPARK)
         .setUsername(YUGABYTE_USER)
         .setPassword(YUGABYTE_PASSWORD)
         .setReadTimestamp(yugabyteTimestamp)
@@ -164,6 +172,7 @@ public class DataPopulatorIntegrationTest {
       stub.setSchema(schemaRequest);
 
       fetchAndValidateSources(stub);
+      connectAndQuerySparkConnect();
     } finally {
       channel.shutdown();
     }
@@ -257,7 +266,7 @@ public class DataPopulatorIntegrationTest {
 
   public IcebergPopulationResult populateIceberg() throws Exception {
     System.setProperty("aws.region", "us-east-1");
-    
+
     createMinIOBucket();
 
     org.apache.iceberg.Schema icebergSchema = new org.apache.iceberg.Schema(
@@ -276,73 +285,75 @@ public class DataPopulatorIntegrationTest {
     properties.put("s3.path-style-access", "true");
     properties.put("s3.region", "us-east-1");
 
-    RESTCatalog catalog = new RESTCatalog();
-    catalog.initialize("rest", properties);
+    try (RESTCatalog catalog = new RESTCatalog()) {
+      catalog.initialize("rest", properties);
 
-    Namespace namespace = Namespace.of("default");
-    if (!catalog.namespaceExists(namespace)) {
-      catalog.createNamespace(namespace);
+      Namespace namespace = Namespace.of("default");
+      if (!catalog.namespaceExists(namespace)) {
+        catalog.createNamespace(namespace);
+      }
+
+      TableIdentifier tableId = TableIdentifier.of(namespace, ICEBERG_TABLE_NAME);
+
+      if (catalog.tableExists(tableId)) {
+        catalog.dropTable(tableId);
+      }
+
+      String tableLocation = "s3a://iceberg-bucket/warehouse/" + ICEBERG_TABLE_NAME;
+      Table table = catalog.createTable(tableId, icebergSchema, PartitionSpec.unpartitioned(), tableLocation, Map.of());
+
+      List<Record> records = new ArrayList<>();
+
+      org.apache.iceberg.data.GenericRecord record1 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
+      record1.setField("id", 1);
+      record1.setField("name", "IcebergAlice");
+      record1.setField("address", "123 Iceberg St");
+      records.add(record1);
+
+      org.apache.iceberg.data.GenericRecord record2 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
+      record2.setField("id", 2);
+      record2.setField("name", "IcebergBob");
+      record2.setField("address", "456 Snapshot Ave");
+      records.add(record2);
+
+      org.apache.iceberg.data.GenericRecord record3 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
+      record3.setField("id", 3);
+      record3.setField("name", "IcebergCharlie");
+      record3.setField("address", "789 Catalog Ln");
+      records.add(record3);
+
+      String fileLocation = tableLocation + "/data/data.parquet";
+      try {
+        table.io().deleteFile(fileLocation);
+      } catch (Exception e) {
+        // File may not exist
+      }
+
+      OutputFile outputFile = table.io().newOutputFile(fileLocation);
+
+      FileAppenderFactory<Record> factory = new GenericAppenderFactory(table.schema());
+      FileAppender<Record> appender = factory.newAppender(outputFile, FileFormat.PARQUET);
+
+      for (Record record : records) {
+        appender.add(record);
+      }
+
+      appender.close();
+
+      DataFile dataFile = DataFiles.builder(table.spec())
+        .withInputFile(table.io().newInputFile(fileLocation))
+        .withMetrics(appender.metrics())
+        .withFormat(FileFormat.PARQUET)
+        .build();
+
+      table.newAppend()
+        .appendFile(dataFile)
+        .commit();
+
+      long snapshotId = table.currentSnapshot().snapshotId();
+
+      return new IcebergPopulationResult(icebergSchemaJson, snapshotId);
     }
-
-    TableIdentifier tableId = TableIdentifier.of(namespace, ICEBERG_TABLE_NAME);
-
-    if (catalog.tableExists(tableId)) {
-      catalog.dropTable(tableId);
-    }
-
-    Table table = catalog.createTable(tableId, icebergSchema);
-
-    List<Record> records = new ArrayList<>();
-
-    org.apache.iceberg.data.GenericRecord record1 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
-    record1.setField("id", 1);
-    record1.setField("name", "IcebergAlice");
-    record1.setField("address", "123 Iceberg St");
-    records.add(record1);
-
-    org.apache.iceberg.data.GenericRecord record2 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
-    record2.setField("id", 2);
-    record2.setField("name", "IcebergBob");
-    record2.setField("address", "456 Snapshot Ave");
-    records.add(record2);
-
-    org.apache.iceberg.data.GenericRecord record3 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
-    record3.setField("id", 3);
-    record3.setField("name", "IcebergCharlie");
-    record3.setField("address", "789 Catalog Ln");
-    records.add(record3);
-
-    String fileLocation = "s3://iceberg-bucket/data.parquet";
-    try {
-      table.io().deleteFile(fileLocation);
-    } catch (Exception e) {
-      // File may not exist
-    }
-
-    OutputFile outputFile = table.io().newOutputFile(fileLocation);
-
-    FileAppenderFactory<Record> factory = new GenericAppenderFactory(table.schema());
-    FileAppender<Record> appender = factory.newAppender(outputFile, FileFormat.PARQUET);
-
-    for (Record record : records) {
-      appender.add(record);
-    }
-
-    appender.close();
-
-    DataFile dataFile = DataFiles.builder(table.spec())
-      .withInputFile(table.io().newInputFile(fileLocation))
-      .withMetrics(appender.metrics())
-      .withFormat(FileFormat.PARQUET)
-      .build();
-
-    table.newAppend()
-      .appendFile(dataFile)
-      .commit();
-
-    long snapshotId = table.currentSnapshot().snapshotId();
-
-    return new IcebergPopulationResult(icebergSchemaJson, snapshotId);
   }
 
   private void fetchAndValidateSources(CatalogServiceGrpc.CatalogServiceBlockingStub stub) throws Exception {
@@ -374,6 +385,33 @@ public class DataPopulatorIntegrationTest {
           .build();
         s3Client.createBucket(createRequest);
         logger.info("Created MinIO bucket: {}", MINIO_BUCKET);
+
+        String policyJson = """
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:*",
+                "Resource": [
+                  "arn:aws:s3:::""" + MINIO_BUCKET + """
+          ",
+                  "arn:aws:s3:::""" + MINIO_BUCKET + """
+          /*"
+                ]
+              }
+            ]
+          }
+          """;
+
+        PutBucketPolicyRequest policyRequest = PutBucketPolicyRequest.builder()
+          .bucket(MINIO_BUCKET)
+          .policy(policyJson)
+          .build();
+
+        s3Client.putBucketPolicy(policyRequest);
+        logger.info("Set public policy for MinIO bucket: {}", MINIO_BUCKET);
       }
 
       s3Client.close();
@@ -454,6 +492,19 @@ public class DataPopulatorIntegrationTest {
       }
 
       return timestamp;
+    }
+  }
+
+  private void connectAndQuerySparkConnect() {
+    try (SparkSession spark = SparkSession
+      .builder()
+      .remote("sc://localhost:15002")
+      .getOrCreate()) {
+      Dataset<Row> result = spark.sql(
+        "SELECT * FROM harness.data_harness.bootstrap"
+      );
+
+      assertThat(result.collectAsList()).hasSize(9);
     }
   }
 
