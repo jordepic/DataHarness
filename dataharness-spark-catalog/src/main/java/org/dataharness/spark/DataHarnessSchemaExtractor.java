@@ -13,8 +13,7 @@ public class DataHarnessSchemaExtractor {
   private static final Logger logger = LoggerFactory.getLogger(DataHarnessSchemaExtractor.class);
 
   public static org.apache.spark.sql.types.StructType extractSchema(
-    String tableName,
-    LoadTableResponse response) {
+      String tableName, LoadTableResponse response) {
     if (response.hasAvroSchema() && !response.getAvroSchema().isEmpty()) {
       logger.debug("Extracting schema from Avro schema for table '{}'", tableName);
       return extractColumnsFromAvroSchema(response.getAvroSchema());
@@ -28,7 +27,7 @@ public class DataHarnessSchemaExtractor {
       return extractColumnsFromProtobufSchema(response.getProtobufSchema());
     }
     throw new IllegalArgumentException(
-      "Table '" + tableName + "' does not have an avro, iceberg, or protobuf schema");
+        "Table '" + tableName + "' does not have an avro, iceberg, or protobuf schema");
   }
 
   private static StructType extractColumnsFromAvroSchema(String avroSchemaStr) {
@@ -43,6 +42,7 @@ public class DataHarnessSchemaExtractor {
   }
 
   private static StructType extractColumnsFromProtobufSchema(String protobufSchemaStr) {
-    throw new UnsupportedOperationException("Protobuf schemas not yet supported in the spark connector!");
+    throw new UnsupportedOperationException(
+        "Protobuf schemas not yet supported in the spark connector!");
   }
 }

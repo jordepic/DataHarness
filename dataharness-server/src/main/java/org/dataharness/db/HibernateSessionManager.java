@@ -21,8 +21,8 @@ public class HibernateSessionManager {
     }
 
     try {
-      StandardServiceRegistryBuilder registryBuilder = new StandardServiceRegistryBuilder()
-        .configure("hibernate.cfg.xml");
+      StandardServiceRegistryBuilder registryBuilder =
+          new StandardServiceRegistryBuilder().configure("hibernate.cfg.xml");
 
       String url = System.getProperty("hibernate.connection.url");
       String username = System.getProperty("hibernate.connection.username");

@@ -3,9 +3,7 @@ package org.dataharness.server;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-
 import java.io.IOException;
-
 import org.dataharness.service.CatalogServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

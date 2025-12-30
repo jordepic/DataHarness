@@ -11,10 +11,19 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "yugabyte_sources", indexes = {
-  @Index(name = "idx_yugabyte_sources_table_id_table_name", columnList = "table_id, table_name", unique = true)}, uniqueConstraints = {
-  @UniqueConstraint(name = "uk_yugabyte_sources_table_id_table_name", columnNames = {"table_id",
-    "table_name"})})
+@Table(
+    name = "yugabyte_sources",
+    indexes = {
+      @Index(
+          name = "idx_yugabyte_sources_table_id_table_name",
+          columnList = "table_id, table_name",
+          unique = true)
+    },
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uk_yugabyte_sources_table_id_table_name",
+          columnNames = {"table_id", "table_name"})
+    })
 public class YugabyteSourceEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,11 +53,17 @@ public class YugabyteSourceEntity {
   @Column(name = "read_timestamp", nullable = false)
   private long readTimestamp;
 
-  public YugabyteSourceEntity() {
-  }
+  public YugabyteSourceEntity() {}
 
-  public YugabyteSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, String tableName,
-                              String jdbcUrl, String username, String password, long readTimestamp) {
+  public YugabyteSourceEntity(
+      long tableId,
+      String trinoCatalogName,
+      String trinoSchemaName,
+      String tableName,
+      String jdbcUrl,
+      String username,
+      String password,
+      long readTimestamp) {
     this.tableId = tableId;
     this.trinoCatalogName = trinoCatalogName;
     this.trinoSchemaName = trinoSchemaName;

@@ -1,5 +1,7 @@
 package org.dataharness.bootstrap;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
@@ -7,6 +9,9 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import java.net.URI;
+import java.sql.*;
+import java.util.*;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -47,19 +52,13 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.PutBucketPolicyRequest;
 
-import java.net.URI;
-import java.sql.*;
-import java.util.*;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * Integration test that populates Kafka, YugabyteDB, Iceberg, and DataHarness with test data.
- * <p>
- * Before running this test, ensure that the required services are running by executing:
+ *
+ * <p>Before running this test, ensure that the required services are running by executing:
  * ./start_images.sh
- * <p>
- * This test is idempotent and will clean up existing data before populating new data.
+ *
+ * <p>This test is idempotent and will clean up existing data before populating new data.
  */
 public class DataPopulatorIntegrationTest {
   public static final String NOT_IMPLEMENTED = "";
@@ -71,12 +70,16 @@ public class DataPopulatorIntegrationTest {
   private static final String DATA_HARNESS_TABLE = "bootstrap";
   private static final String ICEBERG_TABLE_NAME = "iceberg_test";
   private static final String YUGABYTE_TABLE_NAME = "yugabyte_test";
-  private static final String YUGABYTE_JDBC_URL = "jdbc:postgresql://localhost:5433/yugabyte?sslmode=disable";
-  private static final String YUGABYTE_JDBC_URL_FOR_SPARK = "jdbc:postgresql://yugabytedb:5433/yugabyte?sslmode=disable";
+  private static final String YUGABYTE_JDBC_URL =
+      "jdbc:postgresql://localhost:5433/yugabyte?sslmode=disable";
+  private static final String YUGABYTE_JDBC_URL_FOR_SPARK =
+      "jdbc:postgresql://yugabytedb:5433/yugabyte?sslmode=disable";
   private static final String YUGABYTE_USER = "yugabyte";
   private static final String YUGABYTE_PASSWORD = "";
-  private static final String POSTGRES_JDBC_URL_FOR_SPARK = "jdbc:postgresql://postgres:5432/postgres?sslmode=disable";
-  private static final String POSTGRES_JDBC_URL = "jdbc:postgresql://localhost:5432/postgres?sslmode=disable";
+  private static final String POSTGRES_JDBC_URL_FOR_SPARK =
+      "jdbc:postgresql://postgres:5432/postgres?sslmode=disable";
+  private static final String POSTGRES_JDBC_URL =
+      "jdbc:postgresql://localhost:5432/postgres?sslmode=disable";
   private static final String POSTGRES_USER = "postgres";
   private static final String POSTGRES_PASSWORD = "postgres";
   private static final String POSTGRES_TABLE_NAME = "postgres_test";
@@ -98,96 +101,106 @@ public class DataPopulatorIntegrationTest {
     IcebergPopulationResult icebergResult = populateIceberg();
     long postgresTimestamp = populatePostgres();
 
-
-    ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
-    CatalogServiceGrpc.CatalogServiceBlockingStub stub = CatalogServiceGrpc.newBlockingStub(channel);
+    ManagedChannel channel =
+        ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
+    CatalogServiceGrpc.CatalogServiceBlockingStub stub =
+        CatalogServiceGrpc.newBlockingStub(channel);
 
     try {
-      CreateTableRequest createTableRequest = CreateTableRequest.newBuilder()
-        .setName(DATA_HARNESS_TABLE)
-        .build();
+      CreateTableRequest createTableRequest =
+          CreateTableRequest.newBuilder().setName(DATA_HARNESS_TABLE).build();
 
       stub.createTable(createTableRequest);
 
-      KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
-        .setTrinoCatalogName("kafka")
-        .setTrinoSchemaName("default")
-        .setTopicName(TOPIC)
-        .setStartOffset(0)
-        .setEndOffset(kafkaResult.messageCount)
-        .setPartitionNumber(0)
-        .setBrokerUrls(BOOTSTRAP_SERVERS_FOR_SPARK)
-        .setSchemaType(SchemaType.AVRO)
-        .setSchema(kafkaResult.avroSchema)
-        .build();
+      KafkaSourceMessage kafkaSource =
+          KafkaSourceMessage.newBuilder()
+              .setTrinoCatalogName("kafka")
+              .setTrinoSchemaName("default")
+              .setTopicName(TOPIC)
+              .setStartOffset(0)
+              .setEndOffset(kafkaResult.messageCount)
+              .setPartitionNumber(0)
+              .setBrokerUrls(BOOTSTRAP_SERVERS_FOR_SPARK)
+              .setSchemaType(SchemaType.AVRO)
+              .setSchema(kafkaResult.avroSchema)
+              .build();
 
-      SourceUpdate kafkaSourceUpdate = SourceUpdate.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setKafkaSource(kafkaSource)
-        .build();
+      SourceUpdate kafkaSourceUpdate =
+          SourceUpdate.newBuilder()
+              .setTableName(DATA_HARNESS_TABLE)
+              .setKafkaSource(kafkaSource)
+              .build();
 
-      UpsertSourcesRequest.Builder upsertSourcesBuilder = UpsertSourcesRequest.newBuilder()
-        .addSources(kafkaSourceUpdate);
+      UpsertSourcesRequest.Builder upsertSourcesBuilder =
+          UpsertSourcesRequest.newBuilder().addSources(kafkaSourceUpdate);
 
-      IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
-        .setTrinoCatalogName("iceberg")
-        .setTrinoSchemaName("default")
-        .setTableName(ICEBERG_TABLE_NAME)
-        .setReadTimestamp(icebergResult.snapshotId)
-        .setSparkCatalogName("gravitino")
-        .setSparkSchemaName("default")
-        .build();
+      IcebergSourceMessage icebergSource =
+          IcebergSourceMessage.newBuilder()
+              .setTrinoCatalogName("iceberg")
+              .setTrinoSchemaName("default")
+              .setTableName(ICEBERG_TABLE_NAME)
+              .setReadTimestamp(icebergResult.snapshotId)
+              .setSparkCatalogName("gravitino")
+              .setSparkSchemaName("default")
+              .build();
 
-      SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setIcebergSource(icebergSource)
-        .build();
+      SourceUpdate icebergSourceUpdate =
+          SourceUpdate.newBuilder()
+              .setTableName(DATA_HARNESS_TABLE)
+              .setIcebergSource(icebergSource)
+              .build();
 
       upsertSourcesBuilder.addSources(icebergSourceUpdate);
 
-      YugabyteDBSourceMessage yugabyteSource = YugabyteDBSourceMessage.newBuilder()
-        .setTrinoCatalogName(NOT_IMPLEMENTED)
-        .setTrinoSchemaName(NOT_IMPLEMENTED)
-        .setTableName(YUGABYTE_TABLE_NAME)
-        .setJdbcUrl(YUGABYTE_JDBC_URL_FOR_SPARK)
-        .setUsername(YUGABYTE_USER)
-        .setPassword(YUGABYTE_PASSWORD)
-        .setReadTimestamp(yugabyteTimestamp)
-        .build();
+      YugabyteDBSourceMessage yugabyteSource =
+          YugabyteDBSourceMessage.newBuilder()
+              .setTrinoCatalogName(NOT_IMPLEMENTED)
+              .setTrinoSchemaName(NOT_IMPLEMENTED)
+              .setTableName(YUGABYTE_TABLE_NAME)
+              .setJdbcUrl(YUGABYTE_JDBC_URL_FOR_SPARK)
+              .setUsername(YUGABYTE_USER)
+              .setPassword(YUGABYTE_PASSWORD)
+              .setReadTimestamp(yugabyteTimestamp)
+              .build();
 
-      SourceUpdate yugabyteSourceUpdate = SourceUpdate.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setYugabytedbSource(yugabyteSource)
-        .build();
+      SourceUpdate yugabyteSourceUpdate =
+          SourceUpdate.newBuilder()
+              .setTableName(DATA_HARNESS_TABLE)
+              .setYugabytedbSource(yugabyteSource)
+              .build();
 
       upsertSourcesBuilder.addSources(yugabyteSourceUpdate);
 
-      PostgresDBSourceMessage postgresSource = PostgresDBSourceMessage.newBuilder()
-        .setTrinoCatalogName(NOT_IMPLEMENTED)
-        .setTrinoSchemaName(NOT_IMPLEMENTED)
-        .setTableName(POSTGRES_TABLE_NAME)
-        .setJdbcUrl(POSTGRES_JDBC_URL_FOR_SPARK)
-        .setUsername(POSTGRES_USER)
-        .setPassword(POSTGRES_PASSWORD)
-        .setReadTimestamp(postgresTimestamp)
-        .build();
+      PostgresDBSourceMessage postgresSource =
+          PostgresDBSourceMessage.newBuilder()
+              .setTrinoCatalogName(NOT_IMPLEMENTED)
+              .setTrinoSchemaName(NOT_IMPLEMENTED)
+              .setTableName(POSTGRES_TABLE_NAME)
+              .setJdbcUrl(POSTGRES_JDBC_URL_FOR_SPARK)
+              .setUsername(POSTGRES_USER)
+              .setPassword(POSTGRES_PASSWORD)
+              .setReadTimestamp(postgresTimestamp)
+              .build();
 
-      SourceUpdate postgresSourceUpdate = SourceUpdate.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setPostgresdbSource(postgresSource)
-        .build();
+      SourceUpdate postgresSourceUpdate =
+          SourceUpdate.newBuilder()
+              .setTableName(DATA_HARNESS_TABLE)
+              .setPostgresdbSource(postgresSource)
+              .build();
 
       upsertSourcesBuilder.addSources(postgresSourceUpdate);
 
       stub.upsertSources(upsertSourcesBuilder.build());
 
-      ProtobufSchema protobufSchemaObj = new ProtobufSchema(org.dataharness.test.TestMessage.getDescriptor());
+      ProtobufSchema protobufSchemaObj =
+          new ProtobufSchema(org.dataharness.test.TestMessage.getDescriptor());
       String protobufSchema = protobufSchemaObj.canonicalString();
 
-      SetSchemaRequest.Builder schemaRequestBuilder = SetSchemaRequest.newBuilder()
-        .setTableName(DATA_HARNESS_TABLE)
-        .setAvroSchema(kafkaResult.avroSchema)
-        .setProtobufSchema(protobufSchema);
+      SetSchemaRequest.Builder schemaRequestBuilder =
+          SetSchemaRequest.newBuilder()
+              .setTableName(DATA_HARNESS_TABLE)
+              .setAvroSchema(kafkaResult.avroSchema)
+              .setProtobufSchema(protobufSchema);
 
       schemaRequestBuilder.setIcebergSchema(icebergResult.icebergSchema);
 
@@ -218,13 +231,14 @@ public class DataPopulatorIntegrationTest {
 
   private void deleteDataHarness() {
     try {
-      ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
-      CatalogServiceGrpc.CatalogServiceBlockingStub stub = CatalogServiceGrpc.newBlockingStub(channel);
+      ManagedChannel channel =
+          ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
+      CatalogServiceGrpc.CatalogServiceBlockingStub stub =
+          CatalogServiceGrpc.newBlockingStub(channel);
 
       try {
-        DropTableRequest dropRequest = DropTableRequest.newBuilder()
-          .setTableName(DATA_HARNESS_TABLE)
-          .build();
+        DropTableRequest dropRequest =
+            DropTableRequest.newBuilder().setTableName(DATA_HARNESS_TABLE).build();
         stub.dropTable(dropRequest);
       } finally {
         channel.shutdown();
@@ -293,11 +307,11 @@ public class DataPopulatorIntegrationTest {
 
     createMinIOBucket();
 
-    org.apache.iceberg.Schema icebergSchema = new org.apache.iceberg.Schema(
-      Types.NestedField.required(1, "id", Types.IntegerType.get()),
-      Types.NestedField.required(2, "name", Types.StringType.get()),
-      Types.NestedField.required(3, "address", Types.StringType.get())
-    );
+    org.apache.iceberg.Schema icebergSchema =
+        new org.apache.iceberg.Schema(
+            Types.NestedField.required(1, "id", Types.IntegerType.get()),
+            Types.NestedField.required(2, "name", Types.StringType.get()),
+            Types.NestedField.required(3, "address", Types.StringType.get()));
 
     String icebergSchemaJson = SchemaParser.toJson(icebergSchema);
 
@@ -324,23 +338,28 @@ public class DataPopulatorIntegrationTest {
       }
 
       String tableLocation = "s3a://iceberg-bucket/warehouse/" + ICEBERG_TABLE_NAME;
-      Table table = catalog.createTable(tableId, icebergSchema, PartitionSpec.unpartitioned(), tableLocation, Map.of());
+      Table table =
+          catalog.createTable(
+              tableId, icebergSchema, PartitionSpec.unpartitioned(), tableLocation, Map.of());
 
       List<Record> records = new ArrayList<>();
 
-      org.apache.iceberg.data.GenericRecord record1 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
+      org.apache.iceberg.data.GenericRecord record1 =
+          org.apache.iceberg.data.GenericRecord.create(icebergSchema);
       record1.setField("id", 1);
       record1.setField("name", "IcebergAlice");
       record1.setField("address", "123 Iceberg St");
       records.add(record1);
 
-      org.apache.iceberg.data.GenericRecord record2 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
+      org.apache.iceberg.data.GenericRecord record2 =
+          org.apache.iceberg.data.GenericRecord.create(icebergSchema);
       record2.setField("id", 2);
       record2.setField("name", "IcebergBob");
       record2.setField("address", "456 Snapshot Ave");
       records.add(record2);
 
-      org.apache.iceberg.data.GenericRecord record3 = org.apache.iceberg.data.GenericRecord.create(icebergSchema);
+      org.apache.iceberg.data.GenericRecord record3 =
+          org.apache.iceberg.data.GenericRecord.create(icebergSchema);
       record3.setField("id", 3);
       record3.setField("name", "IcebergCharlie");
       record3.setField("address", "789 Catalog Ln");
@@ -364,15 +383,14 @@ public class DataPopulatorIntegrationTest {
 
       appender.close();
 
-      DataFile dataFile = DataFiles.builder(table.spec())
-        .withInputFile(table.io().newInputFile(fileLocation))
-        .withMetrics(appender.metrics())
-        .withFormat(FileFormat.PARQUET)
-        .build();
+      DataFile dataFile =
+          DataFiles.builder(table.spec())
+              .withInputFile(table.io().newInputFile(fileLocation))
+              .withMetrics(appender.metrics())
+              .withFormat(FileFormat.PARQUET)
+              .build();
 
-      table.newAppend()
-        .appendFile(dataFile)
-        .commit();
+      table.newAppend().appendFile(dataFile).commit();
 
       long snapshotId = table.currentSnapshot().snapshotId();
 
@@ -380,37 +398,37 @@ public class DataPopulatorIntegrationTest {
     }
   }
 
-  private void fetchAndValidateSources(CatalogServiceGrpc.CatalogServiceBlockingStub stub) throws Exception {
-    LoadTableRequest request = LoadTableRequest.newBuilder()
-      .setTableName(DATA_HARNESS_TABLE)
-      .build();
+  private void fetchAndValidateSources(CatalogServiceGrpc.CatalogServiceBlockingStub stub)
+      throws Exception {
+    LoadTableRequest request =
+        LoadTableRequest.newBuilder().setTableName(DATA_HARNESS_TABLE).build();
 
     LoadTableResponse response = stub.loadTable(request);
   }
 
   private void createMinIOBucket() {
     try {
-      AwsBasicCredentials credentials = AwsBasicCredentials.create(MINIO_ACCESS_KEY, MINIO_SECRET_KEY);
-      S3Client s3Client = S3Client.builder()
-        .credentialsProvider(StaticCredentialsProvider.create(credentials))
-        .endpointOverride(URI.create(MINIO_ENDPOINT))
-        .region(Region.US_EAST_1)
-        .forcePathStyle(true)
-        .build();
+      AwsBasicCredentials credentials =
+          AwsBasicCredentials.create(MINIO_ACCESS_KEY, MINIO_SECRET_KEY);
+      S3Client s3Client =
+          S3Client.builder()
+              .credentialsProvider(StaticCredentialsProvider.create(credentials))
+              .endpointOverride(URI.create(MINIO_ENDPOINT))
+              .region(Region.US_EAST_1)
+              .forcePathStyle(true)
+              .build();
 
       try {
-        HeadBucketRequest headRequest = HeadBucketRequest.builder()
-          .bucket(MINIO_BUCKET)
-          .build();
+        HeadBucketRequest headRequest = HeadBucketRequest.builder().bucket(MINIO_BUCKET).build();
         s3Client.headBucket(headRequest);
       } catch (Exception e) {
-        CreateBucketRequest createRequest = CreateBucketRequest.builder()
-          .bucket(MINIO_BUCKET)
-          .build();
+        CreateBucketRequest createRequest =
+            CreateBucketRequest.builder().bucket(MINIO_BUCKET).build();
         s3Client.createBucket(createRequest);
         logger.info("Created MinIO bucket: {}", MINIO_BUCKET);
 
-        String policyJson = """
+        String policyJson =
+            """
           {
             "Version": "2012-10-17",
             "Statement": [
@@ -419,9 +437,13 @@ public class DataPopulatorIntegrationTest {
                 "Principal": "*",
                 "Action": "s3:*",
                 "Resource": [
-                  "arn:aws:s3:::""" + MINIO_BUCKET + """
+                  "arn:aws:s3:::"""
+                + MINIO_BUCKET
+                + """
           ",
-                  "arn:aws:s3:::""" + MINIO_BUCKET + """
+                  "arn:aws:s3:::"""
+                + MINIO_BUCKET
+                + """
           /*"
                 ]
               }
@@ -429,10 +451,8 @@ public class DataPopulatorIntegrationTest {
           }
           """;
 
-        PutBucketPolicyRequest policyRequest = PutBucketPolicyRequest.builder()
-          .bucket(MINIO_BUCKET)
-          .policy(policyJson)
-          .build();
+        PutBucketPolicyRequest policyRequest =
+            PutBucketPolicyRequest.builder().bucket(MINIO_BUCKET).policy(policyJson).build();
 
         s3Client.putBucketPolicy(policyRequest);
         logger.info("Set public policy for MinIO bucket: {}", MINIO_BUCKET);
@@ -445,7 +465,8 @@ public class DataPopulatorIntegrationTest {
   }
 
   private void deleteYugabyteTable() {
-    try (Connection conn = DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
+    try (Connection conn =
+        DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
       try (Statement stmt = conn.createStatement()) {
         stmt.execute("DROP TABLE IF EXISTS " + YUGABYTE_TABLE_NAME);
       }
@@ -455,7 +476,8 @@ public class DataPopulatorIntegrationTest {
   }
 
   private void deletePostgresTable() {
-    try (Connection conn = DriverManager.getConnection(POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD)) {
+    try (Connection conn =
+        DriverManager.getConnection(POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD)) {
       try (Statement stmt = conn.createStatement()) {
         stmt.execute("DROP TABLE IF EXISTS " + POSTGRES_TABLE_NAME + "_history CASCADE");
         stmt.execute("DROP TABLE IF EXISTS " + POSTGRES_TABLE_NAME + " CASCADE");
@@ -466,12 +488,15 @@ public class DataPopulatorIntegrationTest {
   }
 
   private long populateYugabyteDB() throws Exception {
-    try (Connection conn = DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
+    try (Connection conn =
+        DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
       try (Statement stmt = conn.createStatement()) {
-        stmt.execute("CREATE TABLE IF NOT EXISTS " + YUGABYTE_TABLE_NAME + " (" + TABLE_SCHEMA + ")");
+        stmt.execute(
+            "CREATE TABLE IF NOT EXISTS " + YUGABYTE_TABLE_NAME + " (" + TABLE_SCHEMA + ")");
       }
 
-      String insertSql = "INSERT INTO " + YUGABYTE_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
+      String insertSql =
+          "INSERT INTO " + YUGABYTE_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
       try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
         pstmt.setInt(1, 1);
         pstmt.setString(2, "YugabyteAlice");
@@ -493,7 +518,9 @@ public class DataPopulatorIntegrationTest {
 
       long timestamp = 0;
       try (Statement stmt = conn.createStatement()) {
-        ResultSet rs = stmt.executeQuery("SELECT (EXTRACT (EPOCH FROM CURRENT_TIMESTAMP)*1000000)::decimal(38,0)");
+        ResultSet rs =
+            stmt.executeQuery(
+                "SELECT (EXTRACT (EPOCH FROM CURRENT_TIMESTAMP)*1000000)::decimal(38,0)");
         if (rs.next()) {
           timestamp = Long.parseLong(rs.getString(1));
         }
@@ -519,10 +546,18 @@ public class DataPopulatorIntegrationTest {
       }
 
       try (Statement stmt = conn.createStatement()) {
-        ResultSet rs = stmt.executeQuery("SELECT id, name, address FROM " + YUGABYTE_TABLE_NAME + " ORDER BY id");
+        ResultSet rs =
+            stmt.executeQuery(
+                "SELECT id, name, address FROM " + YUGABYTE_TABLE_NAME + " ORDER BY id");
         System.out.println("YugabyteDB records:");
         while (rs.next()) {
-          System.out.println("  id=" + rs.getInt("id") + ", name=" + rs.getString("name") + ", address=" + rs.getString("address"));
+          System.out.println(
+              "  id="
+                  + rs.getInt("id")
+                  + ", name="
+                  + rs.getString("name")
+                  + ", address="
+                  + rs.getString("address"));
         }
       }
 
@@ -531,21 +566,31 @@ public class DataPopulatorIntegrationTest {
   }
 
   private long populatePostgres() throws Exception {
-    try (Connection conn = DriverManager.getConnection(POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD)) {
+    try (Connection conn =
+        DriverManager.getConnection(POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD)) {
       try (Statement stmt = conn.createStatement()) {
         stmt.execute("CREATE EXTENSION IF NOT EXISTS temporal_tables");
       }
 
       try (Statement stmt = conn.createStatement()) {
-        stmt.execute("CREATE TABLE IF NOT EXISTS " + POSTGRES_TABLE_NAME + " (" + TABLE_SCHEMA + ")");
+        stmt.execute(
+            "CREATE TABLE IF NOT EXISTS " + POSTGRES_TABLE_NAME + " (" + TABLE_SCHEMA + ")");
       }
 
       try (Statement stmt = conn.createStatement()) {
-        stmt.execute("ALTER TABLE " + POSTGRES_TABLE_NAME + " ADD COLUMN IF NOT EXISTS sys_period tstzrange NOT NULL DEFAULT tstzrange(CURRENT_TIMESTAMP, NULL)");
+        stmt.execute(
+            "ALTER TABLE "
+                + POSTGRES_TABLE_NAME
+                + " ADD COLUMN IF NOT EXISTS sys_period tstzrange NOT NULL DEFAULT tstzrange(CURRENT_TIMESTAMP, NULL)");
       }
 
       try (Statement stmt = conn.createStatement()) {
-        stmt.execute("CREATE TABLE IF NOT EXISTS " + POSTGRES_TABLE_NAME + "_history (LIKE " + POSTGRES_TABLE_NAME + ")");
+        stmt.execute(
+            "CREATE TABLE IF NOT EXISTS "
+                + POSTGRES_TABLE_NAME
+                + "_history (LIKE "
+                + POSTGRES_TABLE_NAME
+                + ")");
       }
 
       try (Statement stmt = conn.createStatement()) {
@@ -553,12 +598,18 @@ public class DataPopulatorIntegrationTest {
       }
 
       try (Statement stmt = conn.createStatement()) {
-        stmt.execute("CREATE TRIGGER versioning_trigger " +
-          "BEFORE INSERT OR UPDATE OR DELETE ON " + POSTGRES_TABLE_NAME + " " +
-          "FOR EACH ROW EXECUTE PROCEDURE versioning('sys_period', '" + POSTGRES_TABLE_NAME + "_history', true)");
+        stmt.execute(
+            "CREATE TRIGGER versioning_trigger "
+                + "BEFORE INSERT OR UPDATE OR DELETE ON "
+                + POSTGRES_TABLE_NAME
+                + " "
+                + "FOR EACH ROW EXECUTE PROCEDURE versioning('sys_period', '"
+                + POSTGRES_TABLE_NAME
+                + "_history', true)");
       }
 
-      String insertSql = "INSERT INTO " + POSTGRES_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
+      String insertSql =
+          "INSERT INTO " + POSTGRES_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
       try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
         pstmt.setInt(1, 1);
         pstmt.setString(2, "PostgresAlice");
@@ -604,28 +655,49 @@ public class DataPopulatorIntegrationTest {
       }
 
       try (Statement stmt = conn.createStatement()) {
-        String query = "SELECT id, name, address, sys_period FROM " +
-          "(" +
-          "  SELECT id, name, address, sys_period FROM " + POSTGRES_TABLE_NAME +
-          "  UNION ALL " +
-          "  SELECT id, name, address, sys_period FROM " + POSTGRES_TABLE_NAME + "_history" +
-          ") AS combined " +
-          "WHERE sys_period @> '" + capturedTimestamp + "'::timestamptz " +
-          "ORDER BY id";
+        String query =
+            "SELECT id, name, address, sys_period FROM "
+                + "("
+                + "  SELECT id, name, address, sys_period FROM "
+                + POSTGRES_TABLE_NAME
+                + "  UNION ALL "
+                + "  SELECT id, name, address, sys_period FROM "
+                + POSTGRES_TABLE_NAME
+                + "_history"
+                + ") AS combined "
+                + "WHERE sys_period @> '"
+                + capturedTimestamp
+                + "'::timestamptz "
+                + "ORDER BY id";
 
         ResultSet rs = stmt.executeQuery(query);
         System.out.println("PostgreSQL temporal query results:");
         while (rs.next()) {
-          System.out.println("  id=" + rs.getInt("id") + ", name=" + rs.getString("name") +
-            ", address=" + rs.getString("address") + ", sys_period=" + rs.getString("sys_period"));
+          System.out.println(
+              "  id="
+                  + rs.getInt("id")
+                  + ", name="
+                  + rs.getString("name")
+                  + ", address="
+                  + rs.getString("address")
+                  + ", sys_period="
+                  + rs.getString("sys_period"));
         }
       }
 
       try (Statement stmt = conn.createStatement()) {
-        ResultSet rs = stmt.executeQuery("SELECT id, name, address FROM " + POSTGRES_TABLE_NAME + " ORDER BY id");
+        ResultSet rs =
+            stmt.executeQuery(
+                "SELECT id, name, address FROM " + POSTGRES_TABLE_NAME + " ORDER BY id");
         System.out.println("PostgreSQL current records:");
         while (rs.next()) {
-          System.out.println("  id=" + rs.getInt("id") + ", name=" + rs.getString("name") + ", address=" + rs.getString("address"));
+          System.out.println(
+              "  id="
+                  + rs.getInt("id")
+                  + ", name="
+                  + rs.getString("name")
+                  + ", address="
+                  + rs.getString("address"));
         }
       }
 
@@ -634,13 +706,8 @@ public class DataPopulatorIntegrationTest {
   }
 
   private void connectAndQuerySparkConnect() {
-    try (SparkSession spark = SparkSession
-      .builder()
-      .remote("sc://localhost:15002")
-      .getOrCreate()) {
-      Dataset<Row> result = spark.sql(
-        "SELECT * FROM harness.data_harness.bootstrap"
-      );
+    try (SparkSession spark = SparkSession.builder().remote("sc://localhost:15002").getOrCreate()) {
+      Dataset<Row> result = spark.sql("SELECT * FROM harness.data_harness.bootstrap");
 
       assertThat(result.collectAsList()).hasSize(12);
     }
@@ -679,7 +746,5 @@ public class DataPopulatorIntegrationTest {
       this.icebergSchema = icebergSchema;
       this.snapshotId = snapshotId;
     }
-
   }
-
 }

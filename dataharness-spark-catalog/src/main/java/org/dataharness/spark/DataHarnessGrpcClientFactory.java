@@ -2,9 +2,8 @@ package org.dataharness.spark;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import org.dataharness.proto.CatalogServiceGrpc;
-
 import java.util.Map;
+import org.dataharness.proto.CatalogServiceGrpc;
 
 public class DataHarnessGrpcClientFactory {
 
@@ -13,9 +12,7 @@ public class DataHarnessGrpcClientFactory {
   private final CatalogServiceGrpc.CatalogServiceBlockingStub stub;
 
   public DataHarnessGrpcClientFactory(String host, int port) {
-    ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
-      .usePlaintext()
-      .build();
+    ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
     this.stub = CatalogServiceGrpc.newBlockingStub(channel);
   }
 

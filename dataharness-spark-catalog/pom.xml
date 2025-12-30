@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.example</groupId>
@@ -17,11 +16,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.example</groupId>
-      <artifactId>dataharness-rpc</artifactId>
-      <version>${revision}</version>
-    </dependency>
-    <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-netty-shaded</artifactId>
     </dependency>
@@ -34,24 +28,8 @@
       <artifactId>grpc-stub</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_2.13</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-catalyst_2.13</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-avro_2.13</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-protobuf_2.13</artifactId>
-      <scope>provided</scope>
+      <groupId>org.example</groupId>
+      <artifactId>dataharness-rpc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.iceberg</groupId>
@@ -63,6 +41,26 @@
       <artifactId>iceberg-spark-runtime-${sparkMajorVersion}_2.13</artifactId>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-avro_2.13</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-catalyst_2.13</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-protobuf_2.13</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-sql_2.13</artifactId>
+      <scope>provided</scope>
+    </dependency>
 
   </dependencies>
   <build>
@@ -70,23 +68,6 @@
       <plugin>
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
-        <version>4.9.1</version>
-        <executions>
-          <execution>
-            <id>scala-compile</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>scala-test-compile</id>
-            <phase>test-compile</phase>
-            <goals>
-              <goal>testCompile</goal>
-            </goals>
-          </execution>
-        </executions>
         <configuration>
           <scalaVersion>2.13.13</scalaVersion>
           <compileOrder>JavaThenScala</compileOrder>
@@ -94,11 +75,26 @@
             <arg>-target:jvm-17</arg>
           </args>
         </configuration>
+        <executions>
+          <execution>
+            <id>scala-compile</id>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <phase>compile</phase>
+          </execution>
+          <execution>
+            <id>scala-test-compile</id>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+            <phase>test-compile</phase>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.scalastyle</groupId>
         <artifactId>scalastyle-maven-plugin</artifactId>
-        <version>1.0.0</version>
         <configuration>
           <skip>true</skip>
         </configuration>

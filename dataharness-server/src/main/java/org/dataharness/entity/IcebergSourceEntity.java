@@ -11,10 +11,19 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "iceberg_sources", indexes = {
-  @Index(name = "idx_iceberg_sources_table_id_table_name", columnList = "table_id, table_name", unique = true)}, uniqueConstraints = {
-  @UniqueConstraint(name = "uk_iceberg_sources_table_id_table_name", columnNames = {"table_id",
-    "table_name"})})
+@Table(
+    name = "iceberg_sources",
+    indexes = {
+      @Index(
+          name = "idx_iceberg_sources_table_id_table_name",
+          columnList = "table_id, table_name",
+          unique = true)
+    },
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uk_iceberg_sources_table_id_table_name",
+          columnNames = {"table_id", "table_name"})
+    })
 public class IcebergSourceEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,11 +50,14 @@ public class IcebergSourceEntity {
   @Column(name = "spark_schema_name")
   private String sparkSchemaName;
 
-  public IcebergSourceEntity() {
-  }
+  public IcebergSourceEntity() {}
 
-  public IcebergSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, String tableName,
-                             long readTimestamp) {
+  public IcebergSourceEntity(
+      long tableId,
+      String trinoCatalogName,
+      String trinoSchemaName,
+      String tableName,
+      long readTimestamp) {
     this.tableId = tableId;
     this.trinoCatalogName = trinoCatalogName;
     this.trinoSchemaName = trinoSchemaName;
@@ -53,8 +65,14 @@ public class IcebergSourceEntity {
     this.readTimestamp = readTimestamp;
   }
 
-  public IcebergSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, String tableName,
-                             long readTimestamp, String sparkCatalogName, String sparkSchemaName) {
+  public IcebergSourceEntity(
+      long tableId,
+      String trinoCatalogName,
+      String trinoSchemaName,
+      String tableName,
+      long readTimestamp,
+      String sparkCatalogName,
+      String sparkSchemaName) {
     this.tableId = tableId;
     this.trinoCatalogName = trinoCatalogName;
     this.trinoSchemaName = trinoSchemaName;

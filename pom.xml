@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.example</groupId>
@@ -16,56 +14,102 @@
   </modules>
 
   <properties>
-    <revision>1.0-SNAPSHOT</revision>
-    <maven.compiler.release>17</maven.compiler.release>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <grpc.version>1.77.0</grpc.version>
-    <protobuf.version>4.31.1</protobuf.version>
-    <hibernate.version>6.4.0.Final</hibernate.version>
-    <postgresql.version>42.7.7</postgresql.version>
-    <slf4j.version>2.0.11</slf4j.version>
-    <logback.version>1.5.13</logback.version>
-    <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
-    <testcontainers.version>1.20.4</testcontainers.version>
-    <junit-jupiter.version>5.10.0</junit-jupiter.version>
     <assertj.version>3.25.3</assertj.version>
-    <kafka.version>3.6.0</kafka.version>
     <avro.version>1.12.0</avro.version>
+    <awssdk.version>2.24.0</awssdk.version>
+    <commons-lang3.version>3.20.0</commons-lang3.version>
     <confluent.version>8.1.1</confluent.version>
+    <flatten-maven-plugin.version>1.6.0</flatten-maven-plugin.version>
+    <grpc.version>1.77.0</grpc.version>
+    <hadoop.version>3.4.0</hadoop.version>
+    <hibernate.version>6.4.0.Final</hibernate.version>
+    <iceberg.version>1.10.0</iceberg.version>
+    <jackson-annotations.version>2.20</jackson-annotations.version>
+    <jackson.version>2.20.0</jackson.version>
+    <jakarta.activation.version>2.1.2</jakarta.activation.version>
+    <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
+    <jib-maven-plugin.version>3.4.0</jib-maven-plugin.version>
+    <junit-jupiter.version>5.10.0</junit-jupiter.version>
+    <kafka.version>3.6.0</kafka.version>
+    <logback.version>1.5.13</logback.version>
+    <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+    <maven-surefire-plugin.version>3.0.0</maven-surefire-plugin.version>
+    <maven.compiler.release>17</maven.compiler.release>
+    <mockito.version>5.12.0</mockito.version>
     <os-maven-plugin.extension.version>1.7.0</os-maven-plugin.extension.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+    <postgresql.version>42.7.7</postgresql.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-    <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
-    <iceberg.version>1.10.0</iceberg.version>
+    <protobuf.version>4.31.1</protobuf.version>
+    <revision>1.0-SNAPSHOT</revision>
+    <scala-maven-plugin.version>4.9.1</scala-maven-plugin.version>
+    <scalastyle-maven-plugin.version>1.0.0</scalastyle-maven-plugin.version>
+    <slf4j.version>2.0.11</slf4j.version>
+    <sortpom-maven-plugin.version>4.0.0</sortpom-maven-plugin.version>
+    <spark.avro.version>1.11.0</spark.avro.version>
+    <spark.grpc.version>1.53.0</spark.grpc.version>
+    <spark.protobuf.version>3.21.9</spark.protobuf.version>
     <spark.version>4.1.0</spark.version>
     <sparkMajorVersion>4.0</sparkMajorVersion>
-    <spark.grpc.version>1.53.0</spark.grpc.version>
-    <spark.avro.version>1.11.0</spark.avro.version>
-    <spark.protobuf.version>3.21.9</spark.protobuf.version>
-    <mockito.version>5.12.0</mockito.version>
-    <commons-lang3.version>3.20.0</commons-lang3.version>
+    <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
+    <testcontainers.version>1.20.4</testcontainers.version>
   </properties>
-
-  <repositories>
-    <repository>
-      <id>confluent</id>
-      <url>https://packages.confluent.io/maven/</url>
-    </repository>
-  </repositories>
 
   <dependencyManagement>
     <dependencies>
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
-        <version>2.24.0</version>
+        <version>${awssdk.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>org.example</groupId>
-        <artifactId>dataharness-rpc</artifactId>
-        <version>${revision}</version>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>${logback.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
+        <version>${jackson-annotations.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>${protobuf.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.confluent</groupId>
+        <artifactId>kafka-avro-serializer</artifactId>
+        <version>${confluent.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.confluent</groupId>
+        <artifactId>kafka-protobuf-serializer</artifactId>
+        <version>${confluent.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>io.confluent</groupId>
+        <artifactId>kafka-schema-registry-client</artifactId>
+        <version>${confluent.version}</version>
       </dependency>
       <dependency>
         <groupId>io.grpc</groupId>
@@ -88,29 +132,9 @@
         <version>${grpc.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.google.protobuf</groupId>
-        <artifactId>protobuf-java</artifactId>
-        <version>${protobuf.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.hibernate.orm</groupId>
-        <artifactId>hibernate-core</artifactId>
-        <version>${hibernate.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.postgresql</groupId>
-        <artifactId>postgresql</artifactId>
-        <version>${postgresql.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>${slf4j.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>${logback.version}</version>
+        <groupId>jakarta.activation</groupId>
+        <artifactId>jakarta.activation-api</artifactId>
+        <version>${jakarta.activation.version}</version>
       </dependency>
       <dependency>
         <groupId>jakarta.persistence</groupId>
@@ -118,60 +142,34 @@
         <version>${jakarta.persistence.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.testcontainers</groupId>
-        <artifactId>testcontainers</artifactId>
-        <version>${testcontainers.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.testcontainers</groupId>
-        <artifactId>postgresql</artifactId>
-        <version>${testcontainers.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter</artifactId>
-        <version>${junit-jupiter.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.assertj</groupId>
-        <artifactId>assertj-core</artifactId>
-        <version>${assertj.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.kafka</groupId>
-        <artifactId>kafka-clients</artifactId>
-        <version>${kafka.version}</version>
-      </dependency>
-      <dependency>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro</artifactId>
         <version>${avro.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.confluent</groupId>
-        <artifactId>kafka-avro-serializer</artifactId>
-        <version>${confluent.version}</version>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${commons-lang3.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.confluent</groupId>
-        <artifactId>kafka-schema-registry-client</artifactId>
-        <version>${confluent.version}</version>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-common</artifactId>
+        <version>${hadoop.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.confluent</groupId>
-        <artifactId>kafka-protobuf-serializer</artifactId>
-        <version>${confluent.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java-util</artifactId>
-          </exclusion>
-        </exclusions>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-mapreduce-client-core</artifactId>
+        <version>${hadoop.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-annotations</artifactId>
-        <version>2.20</version>
+        <groupId>org.apache.iceberg</groupId>
+        <artifactId>iceberg-api</artifactId>
+        <version>${iceberg.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.iceberg</groupId>
+        <artifactId>iceberg-aws</artifactId>
+        <version>${iceberg.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.iceberg</groupId>
@@ -181,11 +179,6 @@
       <dependency>
         <groupId>org.apache.iceberg</groupId>
         <artifactId>iceberg-data</artifactId>
-        <version>${iceberg.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.iceberg</groupId>
-        <artifactId>iceberg-api</artifactId>
         <version>${iceberg.version}</version>
       </dependency>
       <dependency>
@@ -200,27 +193,17 @@
       </dependency>
       <dependency>
         <groupId>org.apache.iceberg</groupId>
-        <artifactId>iceberg-aws</artifactId>
+        <artifactId>iceberg-spark-runtime-${sparkMajorVersion}_2.13</artifactId>
         <version>${iceberg.version}</version>
       </dependency>
       <dependency>
-        <groupId>jakarta.activation</groupId>
-        <artifactId>jakarta.activation-api</artifactId>
-        <version>2.1.2</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-common</artifactId>
-        <version>3.4.0</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-mapreduce-client-core</artifactId>
-        <version>3.4.0</version>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka-clients</artifactId>
+        <version>${kafka.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.spark</groupId>
-        <artifactId>spark-sql_2.13</artifactId>
+        <artifactId>spark-avro_2.13</artifactId>
         <version>${spark.version}</version>
       </dependency>
       <dependency>
@@ -230,12 +213,7 @@
       </dependency>
       <dependency>
         <groupId>org.apache.spark</groupId>
-        <artifactId>spark-avro_2.13</artifactId>
-        <version>${spark.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.spark</groupId>
-        <artifactId>spark-protobuf_2.13</artifactId>
+        <artifactId>spark-connect-client-jvm_2.13</artifactId>
         <version>${spark.version}</version>
       </dependency>
       <dependency>
@@ -245,13 +223,44 @@
       </dependency>
       <dependency>
         <groupId>org.apache.spark</groupId>
+        <artifactId>spark-protobuf_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-sql_2.13</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
         <artifactId>spark-tags_2.13</artifactId>
         <version>${spark.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.iceberg</groupId>
-        <artifactId>iceberg-spark-runtime-${sparkMajorVersion}_2.13</artifactId>
-        <version>${iceberg.version}</version>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>${assertj.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.example</groupId>
+        <artifactId>dataharness-rpc</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.example</groupId>
+        <artifactId>dataharness-rpc</artifactId>
+        <version>${revision}</version>
+        <type>test-jar</type>
+      </dependency>
+      <dependency>
+        <groupId>org.hibernate.orm</groupId>
+        <artifactId>hibernate-core</artifactId>
+        <version>${hibernate.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>${junit-jupiter.version}</version>
       </dependency>
       <dependency>
         <groupId>org.mockito</groupId>
@@ -259,31 +268,157 @@
         <version>${mockito.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-lang3</artifactId>
-        <version>${commons-lang3.version}</version>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgresql.version}</version>
       </dependency>
       <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>s3</artifactId>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
       </dependency>
       <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>kms</artifactId>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${testcontainers.version}</version>
       </dependency>
       <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>sts</artifactId>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers</artifactId>
+        <version>${testcontainers.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
 
+  <repositories>
+    <repository>
+      <id>confluent</id>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+  </repositories>
+
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>${spotless-maven-plugin.version}</version>
+          <configuration>
+            <java>
+              <excludes>
+                <exclude>**/target/**/*.java</exclude>
+                <exclude>**/*Grpc.java</exclude>
+                <exclude>**/*OuterClass.java</exclude>
+              </excludes>
+              <googleJavaFormat>
+                <version>1.17.0</version>
+                <style>GOOGLE</style>
+              </googleJavaFormat>
+              <removeUnusedImports/>
+              <importOrder/>
+              <toggleOffOn/>
+            </java>
+            <scala>
+              <excludes>
+                <exclude>**/target/**/*.scala</exclude>
+              </excludes>
+              <scalafmt>
+                <version>3.7.3</version>
+              </scalafmt>
+            </scala>
+          </configuration>
+          <executions>
+            <execution>
+              <id>spotless-check</id>
+              <goals>
+                <goal>check</goal>
+              </goals>
+              <phase>validate</phase>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>com.github.ekryd.sortpom</groupId>
+          <artifactId>sortpom-maven-plugin</artifactId>
+          <version>${sortpom-maven-plugin.version}</version>
+          <configuration>
+            <predefinedSortOrder>recommended_2008_06</predefinedSortOrder>
+            <lineSeparator>\n</lineSeparator>
+            <encoding>${project.build.sourceEncoding}</encoding>
+            <sortProperties>true</sortProperties>
+            <sortDependencies>scope,groupId,artifactId</sortDependencies>
+            <sortPlugins>groupId,artifactId</sortPlugins>
+            <keepBlankLines>true</keepBlankLines>
+            <nrOfIndentSpace>2</nrOfIndentSpace>
+            <expandEmptyElements>false</expandEmptyElements>
+            <sortModules>true</sortModules>
+            <createBackupFile>false</createBackupFile>
+          </configuration>
+          <executions>
+            <execution>
+              <id>sort-pom</id>
+              <goals>
+                <goal>verify</goal>
+              </goals>
+              <phase>verify</phase>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>com.google.cloud.tools</groupId>
+          <artifactId>jib-maven-plugin</artifactId>
+          <version>${jib-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>kr.motd.maven</groupId>
+          <artifactId>os-maven-plugin</artifactId>
+          <version>${os-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>net.alchim31.maven</groupId>
+          <artifactId>scala-maven-plugin</artifactId>
+          <version>${scala-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>flatten-maven-plugin</artifactId>
+          <version>${flatten-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.scalastyle</groupId>
+          <artifactId>scalastyle-maven-plugin</artifactId>
+          <version>${scalastyle-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.xolstice.maven.plugins</groupId>
+          <artifactId>protobuf-maven-plugin</artifactId>
+          <version>${protobuf-maven-plugin.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.github.ekryd.sortpom</groupId>
+        <artifactId>sortpom-maven-plugin</artifactId>
+      </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>flatten-maven-plugin</artifactId>
-        <version>1.6.0</version>
         <configuration>
           <updatePomFile>true</updatePomFile>
           <flattenMode>resolveCiFriendliesOnly</flattenMode>
@@ -291,17 +426,17 @@
         <executions>
           <execution>
             <id>flatten</id>
-            <phase>process-resources</phase>
             <goals>
               <goal>flatten</goal>
             </goals>
+            <phase>process-resources</phase>
           </execution>
           <execution>
             <id>flatten.clean</id>
-            <phase>clean</phase>
             <goals>
               <goal>clean</goal>
             </goals>
+            <phase>clean</phase>
           </execution>
         </executions>
       </plugin>

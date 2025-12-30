@@ -10,8 +10,9 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "data_harness_table", indexes = {
-  @Index(name = "idx_data_harness_table_name", columnList = "name", unique = true)})
+@Table(
+    name = "data_harness_table",
+    indexes = {@Index(name = "idx_data_harness_table_name", columnList = "name", unique = true)})
 public class DataHarnessTable {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,8 +30,7 @@ public class DataHarnessTable {
   @Column(nullable = true, columnDefinition = "TEXT")
   private String protobufSchema;
 
-  public DataHarnessTable() {
-  }
+  public DataHarnessTable() {}
 
   public DataHarnessTable(String name) {
     this.name = name;

@@ -11,10 +11,19 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "postgres_sources", indexes = {
-  @Index(name = "idx_postgres_sources_table_id_table_name", columnList = "table_id, table_name", unique = true)}, uniqueConstraints = {
-  @UniqueConstraint(name = "uk_postgres_sources_table_id_table_name", columnNames = {"table_id",
-    "table_name"})})
+@Table(
+    name = "postgres_sources",
+    indexes = {
+      @Index(
+          name = "idx_postgres_sources_table_id_table_name",
+          columnList = "table_id, table_name",
+          unique = true)
+    },
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uk_postgres_sources_table_id_table_name",
+          columnNames = {"table_id", "table_name"})
+    })
 public class PostgresSourceEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,11 +53,17 @@ public class PostgresSourceEntity {
   @Column(name = "read_timestamp", nullable = false)
   private long readTimestamp;
 
-  public PostgresSourceEntity() {
-  }
+  public PostgresSourceEntity() {}
 
-  public PostgresSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, String tableName,
-                              String jdbcUrl, String username, String password, long readTimestamp) {
+  public PostgresSourceEntity(
+      long tableId,
+      String trinoCatalogName,
+      String trinoSchemaName,
+      String tableName,
+      String jdbcUrl,
+      String username,
+      String password,
+      long readTimestamp) {
     this.tableId = tableId;
     this.trinoCatalogName = trinoCatalogName;
     this.trinoSchemaName = trinoSchemaName;

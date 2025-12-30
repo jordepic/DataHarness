@@ -17,7 +17,11 @@
 
 package org.dataharness.spark
 
-import org.apache.spark.sql.{SparkSession, SparkSessionExtensions, SparkSessionExtensionsProvider}
+import org.apache.spark.sql.{
+  SparkSession,
+  SparkSessionExtensions,
+  SparkSessionExtensionsProvider
+}
 import org.dataharness.spark.rules.UnionTableResolutionRule
 
 class DataHarnessExtension extends SparkSessionExtensionsProvider {

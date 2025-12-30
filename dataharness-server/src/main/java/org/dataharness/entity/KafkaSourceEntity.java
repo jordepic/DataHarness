@@ -11,10 +11,19 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "kafka_sources", indexes = {
-  @Index(name = "idx_kafka_sources_table_id_topic_partition", columnList = "table_id, topic_name, partition_number", unique = true)}, uniqueConstraints = {
-  @UniqueConstraint(name = "uk_kafka_sources_table_id_topic_partition", columnNames = {"table_id",
-    "topic_name", "partition_number"})})
+@Table(
+    name = "kafka_sources",
+    indexes = {
+      @Index(
+          name = "idx_kafka_sources_table_id_topic_partition",
+          columnList = "table_id, topic_name, partition_number",
+          unique = true)
+    },
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uk_kafka_sources_table_id_topic_partition",
+          columnNames = {"table_id", "topic_name", "partition_number"})
+    })
 public class KafkaSourceEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -50,11 +59,16 @@ public class KafkaSourceEntity {
   @Column(name = "schema")
   private String schema;
 
-  public KafkaSourceEntity() {
-  }
+  public KafkaSourceEntity() {}
 
-  public KafkaSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, long startOffset,
-                           long endOffset, int partitionNumber, String topicName) {
+  public KafkaSourceEntity(
+      long tableId,
+      String trinoCatalogName,
+      String trinoSchemaName,
+      long startOffset,
+      long endOffset,
+      int partitionNumber,
+      String topicName) {
     this.tableId = tableId;
     this.trinoCatalogName = trinoCatalogName;
     this.trinoSchemaName = trinoSchemaName;
@@ -64,9 +78,17 @@ public class KafkaSourceEntity {
     this.topicName = topicName;
   }
 
-  public KafkaSourceEntity(long tableId, String trinoCatalogName, String trinoSchemaName, long startOffset,
-                           long endOffset, int partitionNumber, String topicName, String brokerUrls,
-                           int schemaType, String schema) {
+  public KafkaSourceEntity(
+      long tableId,
+      String trinoCatalogName,
+      String trinoSchemaName,
+      long startOffset,
+      long endOffset,
+      int partitionNumber,
+      String topicName,
+      String brokerUrls,
+      int schemaType,
+      String schema) {
     this.tableId = tableId;
     this.trinoCatalogName = trinoCatalogName;
     this.trinoSchemaName = trinoSchemaName;
