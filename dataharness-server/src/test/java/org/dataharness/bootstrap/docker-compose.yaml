@@ -116,6 +116,26 @@ services:
     ports:
       - "50051:50051"
 
+  trino:
+    image: trinodb/trino:latest
+    container_name: trino
+    depends_on:
+      - kafka
+      - schema-registry
+      - minio
+      - gravitino-iceberg-rest
+      - postgres
+      - yugabytedb
+      - data-harness
+    networks:
+      - kafka-net
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./etc/catalog/kafka.properties:/etc/trino/catalog/kafka.properties:ro
+      - ./etc/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
+      - ./etc/catalog/postgresql.properties:/etc/trino/catalog/postgresql.properties:ro
+
   spark:
     image: apache/spark:latest
     container_name: spark

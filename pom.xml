@@ -54,6 +54,7 @@
     <sparkMajorVersion>4.0</sparkMajorVersion>
     <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
     <testcontainers.version>1.20.4</testcontainers.version>
+    <trino.version>479</trino.version>
   </properties>
 
   <dependencyManagement>
@@ -130,6 +131,11 @@
         <groupId>io.grpc</groupId>
         <artifactId>grpc-testing</artifactId>
         <version>${grpc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.trino</groupId>
+        <artifactId>trino-jdbc</artifactId>
+        <version>${trino.version}</version>
       </dependency>
       <dependency>
         <groupId>jakarta.activation</groupId>
