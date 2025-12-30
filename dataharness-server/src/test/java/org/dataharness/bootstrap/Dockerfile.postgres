@@ -1,0 +1,12 @@
+FROM postgres:15
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    postgresql-server-dev-15 \
+    pgxnclient \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pgxn install temporal_tables
+
+RUN apt-get remove -y build-essential postgresql-server-dev-15 pgxnclient \
+    && apt-get autoremove -y

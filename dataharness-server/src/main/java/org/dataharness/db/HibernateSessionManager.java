@@ -1,10 +1,7 @@
 // Copyright (c) 2025
 package org.dataharness.db;
 
-import org.dataharness.entity.DataHarnessTable;
-import org.dataharness.entity.IcebergSourceEntity;
-import org.dataharness.entity.KafkaSourceEntity;
-import org.dataharness.entity.YugabyteSourceEntity;
+import org.dataharness.entity.*;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -48,6 +45,7 @@ public class HibernateSessionManager {
       metadata.addAnnotatedClass(KafkaSourceEntity.class);
       metadata.addAnnotatedClass(IcebergSourceEntity.class);
       metadata.addAnnotatedClass(YugabyteSourceEntity.class);
+      metadata.addAnnotatedClass(PostgresSourceEntity.class);
 
       sessionFactory = metadata.getMetadataBuilder().build().buildSessionFactory();
     } catch (Exception e) {

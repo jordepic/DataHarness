@@ -75,6 +75,11 @@ public class DataPopulatorIntegrationTest {
   private static final String YUGABYTE_JDBC_URL_FOR_SPARK = "jdbc:postgresql://yugabytedb:5433/yugabyte?sslmode=disable";
   private static final String YUGABYTE_USER = "yugabyte";
   private static final String YUGABYTE_PASSWORD = "";
+  private static final String POSTGRES_JDBC_URL_FOR_SPARK = "jdbc:postgresql://postgres:5432/postgres?sslmode=disable";
+  private static final String POSTGRES_JDBC_URL = "jdbc:postgresql://localhost:5432/postgres?sslmode=disable";
+  private static final String POSTGRES_USER = "postgres";
+  private static final String POSTGRES_PASSWORD = "postgres";
+  private static final String POSTGRES_TABLE_NAME = "postgres_test";
   private static final String TABLE_SCHEMA = "id INT PRIMARY KEY, name TEXT, address TEXT";
   private static final String MINIO_ENDPOINT = "http://localhost:9000";
   private static final String MINIO_ACCESS_KEY = "minioadmin";
@@ -86,10 +91,12 @@ public class DataPopulatorIntegrationTest {
     deleteKafkaTopic();
     deleteDataHarness();
     deleteYugabyteTable();
+    deletePostgresTable();
 
     long yugabyteTimestamp = populateYugabyteDB();
     KafkaPopulationResult kafkaResult = populateKafka();
     IcebergPopulationResult icebergResult = populateIceberg();
+    long postgresTimestamp = populatePostgres();
 
 
     ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
@@ -154,6 +161,23 @@ public class DataPopulatorIntegrationTest {
         .build();
 
       upsertSourcesBuilder.addSources(yugabyteSourceUpdate);
+
+      PostgresDBSourceMessage postgresSource = PostgresDBSourceMessage.newBuilder()
+        .setTrinoCatalogName(NOT_IMPLEMENTED)
+        .setTrinoSchemaName(NOT_IMPLEMENTED)
+        .setTableName(POSTGRES_TABLE_NAME)
+        .setJdbcUrl(POSTGRES_JDBC_URL_FOR_SPARK)
+        .setUsername(POSTGRES_USER)
+        .setPassword(POSTGRES_PASSWORD)
+        .setReadTimestamp(postgresTimestamp)
+        .build();
+
+      SourceUpdate postgresSourceUpdate = SourceUpdate.newBuilder()
+        .setTableName(DATA_HARNESS_TABLE)
+        .setPostgresdbSource(postgresSource)
+        .build();
+
+      upsertSourcesBuilder.addSources(postgresSourceUpdate);
 
       stub.upsertSources(upsertSourcesBuilder.build());
 
@@ -430,6 +454,17 @@ public class DataPopulatorIntegrationTest {
     }
   }
 
+  private void deletePostgresTable() {
+    try (Connection conn = DriverManager.getConnection(POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD)) {
+      try (Statement stmt = conn.createStatement()) {
+        stmt.execute("DROP TABLE IF EXISTS " + POSTGRES_TABLE_NAME + "_history CASCADE");
+        stmt.execute("DROP TABLE IF EXISTS " + POSTGRES_TABLE_NAME + " CASCADE");
+      }
+    } catch (Exception e) {
+      System.err.println("Failed to delete PostgreSQL table: " + e.getMessage());
+    }
+  }
+
   private long populateYugabyteDB() throws Exception {
     try (Connection conn = DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
       try (Statement stmt = conn.createStatement()) {
@@ -495,6 +530,109 @@ public class DataPopulatorIntegrationTest {
     }
   }
 
+  private long populatePostgres() throws Exception {
+    try (Connection conn = DriverManager.getConnection(POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD)) {
+      try (Statement stmt = conn.createStatement()) {
+        stmt.execute("CREATE EXTENSION IF NOT EXISTS temporal_tables");
+      }
+
+      try (Statement stmt = conn.createStatement()) {
+        stmt.execute("CREATE TABLE IF NOT EXISTS " + POSTGRES_TABLE_NAME + " (" + TABLE_SCHEMA + ")");
+      }
+
+      try (Statement stmt = conn.createStatement()) {
+        stmt.execute("ALTER TABLE " + POSTGRES_TABLE_NAME + " ADD COLUMN IF NOT EXISTS sys_period tstzrange NOT NULL DEFAULT tstzrange(CURRENT_TIMESTAMP, NULL)");
+      }
+
+      try (Statement stmt = conn.createStatement()) {
+        stmt.execute("CREATE TABLE IF NOT EXISTS " + POSTGRES_TABLE_NAME + "_history (LIKE " + POSTGRES_TABLE_NAME + ")");
+      }
+
+      try (Statement stmt = conn.createStatement()) {
+        stmt.execute("DROP TRIGGER IF EXISTS versioning_trigger ON " + POSTGRES_TABLE_NAME);
+      }
+
+      try (Statement stmt = conn.createStatement()) {
+        stmt.execute("CREATE TRIGGER versioning_trigger " +
+          "BEFORE INSERT OR UPDATE OR DELETE ON " + POSTGRES_TABLE_NAME + " " +
+          "FOR EACH ROW EXECUTE PROCEDURE versioning('sys_period', '" + POSTGRES_TABLE_NAME + "_history', true)");
+      }
+
+      String insertSql = "INSERT INTO " + POSTGRES_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
+      try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+        pstmt.setInt(1, 1);
+        pstmt.setString(2, "PostgresAlice");
+        pstmt.setString(3, "123 Postgres St");
+        pstmt.addBatch();
+
+        pstmt.setInt(1, 2);
+        pstmt.setString(2, "PostgresBob");
+        pstmt.setString(3, "456 Temporal Ave");
+        pstmt.addBatch();
+
+        pstmt.setInt(1, 3);
+        pstmt.setString(2, "PostgresCharlie");
+        pstmt.setString(3, "789 Table Ln");
+        pstmt.addBatch();
+
+        pstmt.executeBatch();
+      }
+
+      Timestamp capturedTimestamp = new Timestamp(0);
+      try (Statement stmt = conn.createStatement()) {
+        ResultSet rs = stmt.executeQuery("SELECT CURRENT_TIMESTAMP");
+        if (rs.next()) {
+          capturedTimestamp = rs.getTimestamp(1);
+        }
+      }
+
+      String updateSql = "UPDATE " + POSTGRES_TABLE_NAME + " SET name = ? WHERE id = ?";
+      try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
+        pstmt.setString(1, "PostgresAliceModified");
+        pstmt.setInt(2, 1);
+        pstmt.addBatch();
+
+        pstmt.setString(1, "PostgresBobModified");
+        pstmt.setInt(2, 2);
+        pstmt.addBatch();
+
+        pstmt.setString(1, "PostgresCharlieModified");
+        pstmt.setInt(2, 3);
+        pstmt.addBatch();
+
+        pstmt.executeBatch();
+      }
+
+      try (Statement stmt = conn.createStatement()) {
+        String query = "SELECT id, name, address, sys_period FROM " +
+          "(" +
+          "  SELECT id, name, address, sys_period FROM " + POSTGRES_TABLE_NAME +
+          "  UNION ALL " +
+          "  SELECT id, name, address, sys_period FROM " + POSTGRES_TABLE_NAME + "_history" +
+          ") AS combined " +
+          "WHERE sys_period @> '" + capturedTimestamp + "'::timestamptz " +
+          "ORDER BY id";
+
+        ResultSet rs = stmt.executeQuery(query);
+        System.out.println("PostgreSQL temporal query results:");
+        while (rs.next()) {
+          System.out.println("  id=" + rs.getInt("id") + ", name=" + rs.getString("name") +
+            ", address=" + rs.getString("address") + ", sys_period=" + rs.getString("sys_period"));
+        }
+      }
+
+      try (Statement stmt = conn.createStatement()) {
+        ResultSet rs = stmt.executeQuery("SELECT id, name, address FROM " + POSTGRES_TABLE_NAME + " ORDER BY id");
+        System.out.println("PostgreSQL current records:");
+        while (rs.next()) {
+          System.out.println("  id=" + rs.getInt("id") + ", name=" + rs.getString("name") + ", address=" + rs.getString("address"));
+        }
+      }
+
+      return capturedTimestamp.getTime();
+    }
+  }
+
   private void connectAndQuerySparkConnect() {
     try (SparkSession spark = SparkSession
       .builder()
@@ -504,7 +642,7 @@ public class DataPopulatorIntegrationTest {
         "SELECT * FROM harness.data_harness.bootstrap"
       );
 
-      assertThat(result.collectAsList()).hasSize(9);
+      assertThat(result.collectAsList()).hasSize(12);
     }
   }
 

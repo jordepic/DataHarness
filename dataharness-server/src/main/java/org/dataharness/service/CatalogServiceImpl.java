@@ -6,6 +6,7 @@ import org.dataharness.db.HibernateSessionManager;
 import org.dataharness.entity.DataHarnessTable;
 import org.dataharness.entity.IcebergSourceEntity;
 import org.dataharness.entity.KafkaSourceEntity;
+import org.dataharness.entity.PostgresSourceEntity;
 import org.dataharness.entity.YugabyteSourceEntity;
 import org.dataharness.proto.*;
 import org.hibernate.Session;
@@ -165,6 +166,24 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                 yugabyteMsg.getUsername(), yugabyteMsg.getPassword(), yugabyteMsg.getReadTimestamp());
               session.persist(entity);
             }
+          } else if (sourceUpdate.hasPostgresdbSource()) {
+            PostgresDBSourceMessage postgresMsg = sourceUpdate.getPostgresdbSource();
+            PostgresSourceEntity existing = findPostgresSource(session, tableId, postgresMsg.getTableName());
+
+            if (existing != null) {
+              existing.setTrinoCatalogName(postgresMsg.getTrinoCatalogName());
+              existing.setTrinoSchemaName(postgresMsg.getTrinoSchemaName());
+              existing.setJdbcUrl(postgresMsg.getJdbcUrl());
+              existing.setUsername(postgresMsg.getUsername());
+              existing.setPassword(postgresMsg.getPassword());
+              existing.setReadTimestamp(postgresMsg.getReadTimestamp());
+              session.merge(existing);
+            } else {
+              PostgresSourceEntity entity = new PostgresSourceEntity(tableId, postgresMsg.getTrinoCatalogName(),
+                postgresMsg.getTrinoSchemaName(), postgresMsg.getTableName(), postgresMsg.getJdbcUrl(),
+                postgresMsg.getUsername(), postgresMsg.getPassword(), postgresMsg.getReadTimestamp());
+              session.persist(entity);
+            }
           }
         }
 
@@ -225,6 +244,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         List<KafkaSourceEntity> kafkaSources = findAllKafkaSources(session, tableId);
         List<IcebergSourceEntity> icebergSources = findAllIcebergSources(session, tableId);
         List<YugabyteSourceEntity> yugabyteSources = findAllYugabyteSources(session, tableId);
+        List<PostgresSourceEntity> postgresSources = findAllPostgresSources(session, tableId);
 
         transaction.commit();
 
@@ -292,6 +312,22 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
 
           TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
             .setYugabytedbSource(yugabyteMsg).build();
+
+          responseBuilder.addSources(sourceMessage);
+        }
+
+        for (PostgresSourceEntity postgres : postgresSources) {
+          PostgresDBSourceMessage postgresMsg = PostgresDBSourceMessage.newBuilder()
+            .setTrinoCatalogName(postgres.getTrinoCatalogName())
+            .setTrinoSchemaName(postgres.getTrinoSchemaName())
+            .setTableName(postgres.getTableName())
+            .setJdbcUrl(postgres.getJdbcUrl())
+            .setUsername(postgres.getUsername())
+            .setPassword(postgres.getPassword())
+            .setReadTimestamp(postgres.getReadTimestamp()).build();
+
+          TableSourceMessage sourceMessage = TableSourceMessage.newBuilder().setTableName(tableName)
+            .setPostgresdbSource(postgresMsg).build();
 
           responseBuilder.addSources(sourceMessage);
         }
@@ -467,6 +503,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         deleteYugabyteSources.setParameter("tableId", tableId);
         deleteYugabyteSources.executeUpdate();
 
+        Query<?> deletePostgresSources = session.createQuery("DELETE FROM PostgresSourceEntity WHERE tableId = :tableId");
+        deletePostgresSources.setParameter("tableId", tableId);
+        deletePostgresSources.executeUpdate();
+
         session.remove(table);
 
         transaction.commit();
@@ -532,6 +572,16 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     return query.uniqueResult();
   }
 
+  private PostgresSourceEntity findPostgresSource(Session session, long tableId, String tableName) {
+    Query<PostgresSourceEntity> query = session.createQuery(
+      "FROM PostgresSourceEntity WHERE tableId = :tableId AND tableName = :tableName",
+      PostgresSourceEntity.class);
+    query.setParameter("tableId", tableId);
+    query.setParameter("tableName", tableName);
+
+    return query.uniqueResult();
+  }
+
   private List<KafkaSourceEntity> findAllKafkaSources(Session session, long tableId) {
     Query<KafkaSourceEntity> query = session.createQuery("FROM KafkaSourceEntity WHERE tableId = :tableId",
       KafkaSourceEntity.class);
@@ -551,6 +601,14 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
   private List<YugabyteSourceEntity> findAllYugabyteSources(Session session, long tableId) {
     Query<YugabyteSourceEntity> query = session.createQuery("FROM YugabyteSourceEntity WHERE tableId = :tableId",
       YugabyteSourceEntity.class);
+    query.setParameter("tableId", tableId);
+
+    return query.getResultList();
+  }
+
+  private List<PostgresSourceEntity> findAllPostgresSources(Session session, long tableId) {
+    Query<PostgresSourceEntity> query = session.createQuery("FROM PostgresSourceEntity WHERE tableId = :tableId",
+      PostgresSourceEntity.class);
     query.setParameter("tableId", tableId);
 
     return query.getResultList();

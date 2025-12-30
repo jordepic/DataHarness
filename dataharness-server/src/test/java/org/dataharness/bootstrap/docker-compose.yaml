@@ -80,7 +80,9 @@ services:
       AWS_SECRET_ACCESS_KEY: minioadmin
 
   postgres:
-    image: postgres:15
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
     container_name: postgres
     networks:
       - kafka-net

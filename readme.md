@@ -40,7 +40,8 @@ Examples:
 What does this mean?
 
 - In their vanilla state, we cannot support MySQL and PostgresSQL as first class citizens of DataHarness
-- However, we can support MySQL and PostgresSQL wire-protocol compliant databases like TiDB and YugabyteDB
+- However, we can support MySQL and PostgresSQL wire-protocol compliant databases like TiDB and YugabyteDB or use
+  extensions!
 
 ## Creating A DataHarness Table
 
@@ -140,6 +141,7 @@ localhost:50051.
 | Amazon Kinesis with Protobuf Encoded Data                    |              |              |
 | Azure Event Hubs with Avro Encoded Data                      |              |              |
 | Azure Event Hubs with Protobuf Encoded Data                  |              |              |
+| PostgreSQL (Temporal Tables Extension)                       | ✅            |              |
 | YugaByteDB (Postgres compatible)                             | ✅            |              |
 | YugaByteDB (Cassandra compatible)                            |              |              |
 | CockroachDB (Postgres compatible)                            |              |              |

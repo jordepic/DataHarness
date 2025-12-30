@@ -54,6 +54,8 @@ case class UnionTableResolutionRule(spark: SparkSession) extends Rule[LogicalPla
         dataFrames += loadYugabyteDataFrame(source.getYugabytedbSource)
       } else if (source.hasIcebergSource) {
         dataFrames += loadIcebergDataFrame(source.getIcebergSource)
+      } else if (source.hasPostgresdbSource) {
+        dataFrames += loadPostgresDataFrame(source.getPostgresdbSource)
       }
     }
 
@@ -117,6 +119,39 @@ case class UnionTableResolutionRule(spark: SparkSession) extends Rule[LogicalPla
       "user" -> username,
       "password" -> password,
       "sessionInitStatement" -> s"SET yb_read_time TO $readTimestamp"
+    )
+
+    spark.read
+      .format("jdbc")
+      .options(jdbcOptions)
+      .load()
+  }
+
+  private def loadPostgresDataFrame(
+                                     postgresSource: org.dataharness.proto.PostgresDBSourceMessage
+                                   ): org.apache.spark.sql.DataFrame = {
+    val readTimestamp = postgresSource.getReadTimestamp
+    val jdbcUrl = postgresSource.getJdbcUrl
+    val dbTable = postgresSource.getTableName
+    val username = postgresSource.getUsername
+    val password = postgresSource.getPassword
+
+    val timestamp = new java.sql.Timestamp(readTimestamp)
+    val query = s"""(
+      SELECT * FROM (
+        SELECT * FROM $dbTable
+        UNION ALL
+        SELECT * FROM ${dbTable}_history
+      ) AS combined
+      WHERE sys_period @> '$timestamp'::timestamptz
+    )"""
+
+    val jdbcOptions = Map(
+      "url" -> jdbcUrl,
+      "driver" -> "org.postgresql.Driver",
+      "query" -> query,
+      "user" -> username,
+      "password" -> password
     )
 
     spark.read

@@ -85,6 +85,9 @@ public class CatalogServiceIntegrationTest {
       Query<?> deleteYugabyteSources = session.createQuery("DELETE FROM YugabyteSourceEntity");
       deleteYugabyteSources.executeUpdate();
 
+      Query<?> deletePostgresSources = session.createQuery("DELETE FROM PostgresSourceEntity");
+      deletePostgresSources.executeUpdate();
+
       Query<?> deleteTables = session.createQuery("DELETE FROM DataHarnessTable");
       deleteTables.executeUpdate();
 
@@ -233,6 +236,56 @@ public class CatalogServiceIntegrationTest {
     assertThat(loadedSource.getTrinoCatalogName()).isEqualTo(trinocatalog);
     assertThat(loadedSource.getTrinoSchemaName()).isEqualTo(trinoschema);
     assertThat(loadedSource.getTableName()).isEqualTo(tableNameYugabyte);
+    assertThat(loadedSource.getJdbcUrl()).isEqualTo(jdbcUrl);
+    assertThat(loadedSource.getUsername()).isEqualTo(username);
+    assertThat(loadedSource.getPassword()).isEqualTo(password);
+    assertThat(loadedSource.getReadTimestamp()).isEqualTo(readTimestamp);
+  }
+
+  @Test
+  public void testUpsertPostgresDBSource() {
+    String tableName = "test responsetable responsepostgres";
+    CreateTableRequest tableRequest = CreateTableRequest.newBuilder().setName(tableName).build();
+    CreateTableResponse tableResponse = stub.createTable(tableRequest);
+
+    String trinocatalog = "trino responsecatalog";
+    String trinoschema = "public";
+    String tableNamePostgres = "postgres responsetable";
+    String jdbcUrl = "jdbc:postgresql://localhost:5432/postgres?sslmode=disable";
+    String username = "postgres";
+    String password = "postgres";
+    long readTimestamp = System.currentTimeMillis() * 1000;
+
+    PostgresDBSourceMessage postgresSource = PostgresDBSourceMessage.newBuilder()
+      .setTrinoCatalogName(trinocatalog)
+      .setTrinoSchemaName(trinoschema)
+      .setTableName(tableNamePostgres)
+      .setJdbcUrl(jdbcUrl)
+      .setUsername(username)
+      .setPassword(password)
+      .setReadTimestamp(readTimestamp)
+      .build();
+
+    SourceUpdate sourceUpdate = SourceUpdate.newBuilder().setTableName(tableName)
+      .setPostgresdbSource(postgresSource).build();
+
+    UpsertSourcesRequest request = UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+
+    UpsertSourcesResponse response = stub.upsertSources(request);
+
+    assertThat(response.getSuccess()).isTrue();
+    assertThat(response.getMessage()).isEqualTo("Sources upserted successfully");
+
+    LoadTableRequest loadRequest = LoadTableRequest.newBuilder().setTableName(tableName).build();
+    LoadTableResponse loadResponse = stub.loadTable(loadRequest);
+
+    assertThat(loadResponse.getSourcesCount()).isEqualTo(1);
+    assertThat(loadResponse.getSourcesList().get(0).hasPostgresdbSource()).isTrue();
+
+    PostgresDBSourceMessage loadedSource = loadResponse.getSourcesList().get(0).getPostgresdbSource();
+    assertThat(loadedSource.getTrinoCatalogName()).isEqualTo(trinocatalog);
+    assertThat(loadedSource.getTrinoSchemaName()).isEqualTo(trinoschema);
+    assertThat(loadedSource.getTableName()).isEqualTo(tableNamePostgres);
     assertThat(loadedSource.getJdbcUrl()).isEqualTo(jdbcUrl);
     assertThat(loadedSource.getUsername()).isEqualTo(username);
     assertThat(loadedSource.getPassword()).isEqualTo(password);
