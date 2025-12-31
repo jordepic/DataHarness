@@ -6,8 +6,6 @@ import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
-import com.google.protobuf.Descriptors;
-import io.trino.decoder.protobuf.ProtobufUtils;
 import io.trino.plugin.iceberg.TypeConverter;
 import io.trino.plugin.kafka.schema.confluent.AvroSchemaConverter;
 import io.trino.spi.TrinoException;
@@ -15,28 +13,21 @@ import io.trino.spi.connector.ConnectorMetadata;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorViewDefinition;
 import io.trino.spi.connector.SchemaTableName;
-import io.trino.spi.type.StandardTypes;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.TypeId;
 import io.trino.spi.type.TypeManager;
-import io.trino.spi.type.TypeSignature;
-import io.trino.spi.type.VarcharType;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.iceberg.SchemaParser;
 import org.apache.iceberg.types.Types;
-import org.dataharness.proto.CatalogServiceGrpc;
-import org.dataharness.proto.ListTablesRequest;
-import org.dataharness.proto.ListTablesResponse;
-import org.dataharness.proto.LoadTableRequest;
-import org.dataharness.proto.LoadTableResponse;
-import org.dataharness.proto.TableSourceMessage;
+import org.dataharness.proto.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DataHarnessMetadata implements ConnectorMetadata {
+    public static final int MILLIS_TO_NANOS = 1_000_000;
     private static final Logger LOGGER = LoggerFactory.getLogger(DataHarnessMetadata.class);
     private static final String DEFAULT_SCHEMA = "default";
     private final TypeManager typeManager;
@@ -124,7 +115,9 @@ public class DataHarnessMetadata implements ConnectorMetadata {
 
         String protobufSchemaStr = response.getProtobufSchema();
         if (!protobufSchemaStr.isEmpty()) {
-            return extractColumnsFromProtobufSchema(protobufSchemaStr);
+            throw new TrinoException(
+                    INVALID_VIEW,
+                    "Table '" + tableName + "' only specifies a protobuf schema, which is not yet supported by Trino");
         }
 
         throw new TrinoException(
@@ -157,46 +150,6 @@ public class DataHarnessMetadata implements ConnectorMetadata {
         return viewColumns.build();
     }
 
-    private List<ConnectorViewDefinition.ViewColumn> extractColumnsFromProtobufSchema(String protobufSchemaStr) {
-        try {
-            Descriptors.FileDescriptor fileDescriptor = ProtobufUtils.getFileDescriptor(protobufSchemaStr);
-            List<Descriptors.Descriptor> messageTypes = fileDescriptor.getMessageTypes();
-
-            if (messageTypes.isEmpty()) {
-                throw new TrinoException(INVALID_VIEW, "Protobuf schema contains no message types");
-            }
-
-            Descriptors.Descriptor mainMessage = messageTypes.get(0);
-            ImmutableList.Builder<ConnectorViewDefinition.ViewColumn> viewColumns = ImmutableList.builder();
-
-            for (Descriptors.FieldDescriptor fieldDescriptor : mainMessage.getFields()) {
-                String columnName = fieldDescriptor.getName();
-                Type trinoType = protobufFieldToTrinoType(fieldDescriptor);
-                TypeId typeId = trinoType.getTypeId();
-                viewColumns.add(new ConnectorViewDefinition.ViewColumn(columnName, typeId, Optional.empty()));
-            }
-
-            return viewColumns.build();
-        } catch (TrinoException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new TrinoException(INVALID_VIEW, "Failed to parse protobuf schema: " + e.getMessage(), e);
-        }
-    }
-
-    private Type protobufFieldToTrinoType(Descriptors.FieldDescriptor fieldDescriptor) {
-        return switch (fieldDescriptor.getJavaType()) {
-            case BOOLEAN -> typeManager.getType(new TypeSignature(StandardTypes.BOOLEAN));
-            case INT -> typeManager.getType(new TypeSignature(StandardTypes.INTEGER));
-            case LONG -> typeManager.getType(new TypeSignature(StandardTypes.BIGINT));
-            case FLOAT -> typeManager.getType(new TypeSignature(StandardTypes.REAL));
-            case DOUBLE -> typeManager.getType(new TypeSignature(StandardTypes.DOUBLE));
-            case BYTE_STRING -> typeManager.getType(new TypeSignature(StandardTypes.VARBINARY));
-            case STRING, ENUM -> VarcharType.createUnboundedVarcharType();
-            case MESSAGE -> typeManager.getType(new TypeSignature(StandardTypes.JSON));
-        };
-    }
-
     private String buildViewDefinition(String tableName, LoadTableResponse response, List<String> columnNames) {
         LOGGER.info("Table '{}' has {} sources", tableName, response.getSourcesCount());
 
@@ -216,6 +169,11 @@ public class DataHarnessMetadata implements ConnectorMetadata {
                 String icebergQuery = buildIcebergQuery(source.getIcebergSource(), columnList);
                 LOGGER.info("Generated Iceberg query for table '{}': {}", tableName, icebergQuery);
                 queries.add(icebergQuery);
+            }
+            if (source.hasPostgresdbSource()) {
+                String postgresQuery = buildPostgresQuery(source.getPostgresdbSource(), columnList);
+                LOGGER.info("Generated Postgres query for table '{}': {}", tableName, postgresQuery);
+                queries.add(postgresQuery);
             }
         }
 
@@ -251,6 +209,28 @@ public class DataHarnessMetadata implements ConnectorMetadata {
                 icebergSource.getTrinoSchemaName(),
                 icebergSource.getTableName(),
                 icebergSource.getReadTimestamp());
+    }
+
+    private String buildPostgresQuery(org.dataharness.proto.PostgresDBSourceMessage postgresSource, String columnList) {
+        String catalog = postgresSource.getTrinoCatalogName();
+        String schema = postgresSource.getTrinoSchemaName();
+        String tableName = postgresSource.getTableNameNoTstzrange();
+        String historyTableName = postgresSource.getHistoryTableNameNoTstzrange();
+        long readTimestamp = postgresSource.getReadTimestamp();
+
+        long readTimestampNanos = readTimestamp * MILLIS_TO_NANOS;
+
+        return String.format(
+                "SELECT %s FROM (SELECT * FROM \"%s\".\"%s\".\"%s\" UNION ALL SELECT * FROM \"%s\".\"%s\".\"%s\") AS combined WHERE tsstart <= from_unixtime_nanos(%d) AND (tsend IS NULL OR tsend > from_unixtime_nanos(%d))",
+                columnList,
+                catalog,
+                schema,
+                tableName,
+                catalog,
+                schema,
+                historyTableName,
+                readTimestampNanos,
+                readTimestampNanos);
     }
 
     private String quoteIdentifier(String name) {

@@ -21,14 +21,4 @@ public class DataHarnessGrpcClientFactory {
     public CatalogServiceBlockingStub getStub() {
         return stub;
     }
-
-    public ManagedChannel getChannel() {
-        return channel;
-    }
-
-    public void shutdown() {
-        if (channel != null && !channel.isShutdown()) {
-            channel.shutdown();
-        }
-    }
 }
