@@ -7,7 +7,7 @@
     <version>${revision}</version>
   </parent>
 
-  <artifactId>dataharness-spark-catalog</artifactId>
+  <artifactId>dataharness-spark</artifactId>
   <packaging>jar</packaging>
 
   <properties>

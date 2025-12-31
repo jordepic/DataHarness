@@ -173,7 +173,7 @@ Two main features that are not currently supported but we hope to support soon:
 This repository exposes a spark catalog that you can set up very easily. To do so, create your spark program as follows:
 
 ```bash
-./bin/spark-sql --packages org.example:dataharness-spark-catalog:1.0-SNAPSHOT
+./bin/spark-sql --packages org.example:dataharness-spark:1.0-SNAPSHOT
 --conf spark.sql.catalog.harness=org.dataharness.spark.DataHarnessCatalog
 --conf spark.sql.extensions=org.dataharness.spark.DataHarnessExtension
 --conf spark.sql.catalog.harness.data-harness-host=data-harness

@@ -5,9 +5,11 @@
     <file url="file://$PROJECT_DIR$/dataharness-rpc/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/dataharness-server/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/dataharness-server/src/main/resources" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/dataharness-spark-catalog/src/main/java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/dataharness-spark-catalog/src/main/resources" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/dataharness-spark-catalog/src/main/scala" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/dataharness-spark/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/dataharness-spark/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/dataharness-spark/src/main/scala" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/dataharness-trino/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/dataharness-trino/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>

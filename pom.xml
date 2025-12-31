@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.example</groupId>
@@ -10,10 +11,12 @@
   <modules>
     <module>dataharness-rpc</module>
     <module>dataharness-server</module>
-    <module>dataharness-spark-catalog</module>
+    <module>dataharness-spark</module>
+    <module>dataharness-trino</module>
   </modules>
 
   <properties>
+    <airlift.version>367</airlift.version>
     <assertj.version>3.25.3</assertj.version>
     <avro.version>1.12.0</avro.version>
     <awssdk.version>2.24.0</awssdk.version>
@@ -21,6 +24,8 @@
     <confluent.version>8.1.1</confluent.version>
     <flatten-maven-plugin.version>1.6.0</flatten-maven-plugin.version>
     <grpc.version>1.77.0</grpc.version>
+    <guava.version>33.0.0-jre</guava.version>
+    <guice.version>7.0.0</guice.version>
     <hadoop.version>3.4.0</hadoop.version>
     <hibernate.version>6.4.0.Final</hibernate.version>
     <iceberg.version>1.10.0</iceberg.version>
@@ -28,7 +33,9 @@
     <jackson.version>2.20.0</jackson.version>
     <jakarta.activation.version>2.1.2</jakarta.activation.version>
     <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
+    <jakarta.validation.version>3.0.2</jakarta.validation.version>
     <jib-maven-plugin.version>3.4.0</jib-maven-plugin.version>
+    <jol.version>0.17</jol.version>
     <junit-jupiter.version>5.10.0</junit-jupiter.version>
     <kafka.version>3.6.0</kafka.version>
     <logback.version>1.5.13</logback.version>
@@ -36,6 +43,7 @@
     <maven-surefire-plugin.version>3.0.0</maven-surefire-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <mockito.version>5.12.0</mockito.version>
+    <opentelemetry.version>1.42.1</opentelemetry.version>
     <os-maven-plugin.extension.version>1.7.0</os-maven-plugin.extension.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <postgresql.version>42.7.7</postgresql.version>
@@ -52,13 +60,21 @@
     <spark.protobuf.version>3.21.9</spark.protobuf.version>
     <spark.version>4.1.0</spark.version>
     <sparkMajorVersion>4.0</sparkMajorVersion>
-    <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
+    <spotless-maven-plugin.version>3.1.0</spotless-maven-plugin.version>
     <testcontainers.version>1.20.4</testcontainers.version>
-    <trino.version>479</trino.version>
+    <trino-maven-plugin.version>15</trino-maven-plugin.version>
+    <trino.version>476</trino.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>io.airlift</groupId>
+        <artifactId>bom</artifactId>
+        <version>${airlift.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
@@ -85,6 +101,17 @@
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.inject</groupId>
+        <artifactId>guice</artifactId>
+        <version>${guice.version}</version>
+        <classifier>classes</classifier>
       </dependency>
       <dependency>
         <groupId>com.google.protobuf</groupId>
@@ -114,12 +141,32 @@
       </dependency>
       <dependency>
         <groupId>io.grpc</groupId>
+        <artifactId>grpc-api</artifactId>
+        <version>${grpc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-context</artifactId>
+        <version>${grpc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-core</artifactId>
+        <version>${grpc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.grpc</groupId>
         <artifactId>grpc-netty-shaded</artifactId>
         <version>${grpc.version}</version>
       </dependency>
       <dependency>
         <groupId>io.grpc</groupId>
         <artifactId>grpc-protobuf</artifactId>
+        <version>${grpc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-protobuf-lite</artifactId>
         <version>${grpc.version}</version>
       </dependency>
       <dependency>
@@ -133,8 +180,49 @@
         <version>${grpc.version}</version>
       </dependency>
       <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-util</artifactId>
+        <version>${grpc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-api</artifactId>
+        <version>${opentelemetry.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-context</artifactId>
+        <version>${opentelemetry.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.trino</groupId>
+        <artifactId>trino-iceberg</artifactId>
+        <version>${trino.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api-incubator</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
         <groupId>io.trino</groupId>
         <artifactId>trino-jdbc</artifactId>
+        <version>${trino.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.trino</groupId>
+        <artifactId>trino-kafka</artifactId>
+        <version>${trino.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.trino</groupId>
+        <artifactId>trino-plugin-toolkit</artifactId>
+        <version>${trino.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.trino</groupId>
+        <artifactId>trino-spi</artifactId>
         <version>${trino.version}</version>
       </dependency>
       <dependency>
@@ -146,6 +234,11 @@
         <groupId>jakarta.persistence</groupId>
         <artifactId>jakarta.persistence-api</artifactId>
         <version>${jakarta.persistence.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>jakarta.validation</groupId>
+        <artifactId>jakarta.validation-api</artifactId>
+        <version>${jakarta.validation.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.avro</groupId>
@@ -274,6 +367,11 @@
         <version>${mockito.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.openjdk.jol</groupId>
+        <artifactId>jol-core</artifactId>
+        <version>${jol.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <version>${postgresql.version}</version>
@@ -292,6 +390,11 @@
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers</artifactId>
         <version>${testcontainers.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.airlift</groupId>
+        <artifactId>slice</artifactId>
+        <scope>provided</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -318,7 +421,7 @@
                 <exclude>**/*OuterClass.java</exclude>
               </excludes>
               <googleJavaFormat>
-                <version>1.17.0</version>
+                <version>1.33.0</version>
                 <style>GOOGLE</style>
               </googleJavaFormat>
               <removeUnusedImports/>
@@ -447,6 +550,13 @@
         </executions>
       </plugin>
     </plugins>
+    <extensions>
+      <extension>
+        <groupId>io.trino</groupId>
+        <artifactId>trino-maven-plugin</artifactId>
+        <version>${trino-maven-plugin.version}</version>
+      </extension>
+    </extensions>
   </build>
 
 </project>
