@@ -137,16 +137,17 @@ case class UnionTableResolutionRule(spark: SparkSession)
   ): org.apache.spark.sql.DataFrame = {
     val readTimestamp = postgresSource.getReadTimestamp
     val jdbcUrl = postgresSource.getJdbcUrl
-    val dbTable = postgresSource.getTableName
+    val tableName = postgresSource.getTableName
+    val historyTableName = postgresSource.getHistoryTableName
     val username = postgresSource.getUsername
     val password = postgresSource.getPassword
 
     val timestamp = new java.sql.Timestamp(readTimestamp)
     val query = s"""(
       SELECT * FROM (
-        SELECT * FROM $dbTable
+        SELECT * FROM $tableName
         UNION ALL
-        SELECT * FROM ${dbTable}_history
+        SELECT * FROM $historyTableName
       ) AS combined
       WHERE sys_period @> '$timestamp'::timestamptz
     )"""

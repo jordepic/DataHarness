@@ -168,6 +168,7 @@ public class DataPopulatorIntegrationTest {
         .setTrinoCatalogName(NOT_IMPLEMENTED)
         .setTrinoSchemaName(NOT_IMPLEMENTED)
         .setTableName(POSTGRES_TABLE_NAME)
+        .setHistoryTableName(POSTGRES_TABLE_NAME + "_temporal")
         .setJdbcUrl(POSTGRES_JDBC_URL_FOR_SPARK)
         .setUsername(POSTGRES_USER)
         .setPassword(POSTGRES_PASSWORD)
@@ -457,7 +458,7 @@ public class DataPopulatorIntegrationTest {
   private void deletePostgresTable() {
     try (Connection conn = DriverManager.getConnection(POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD)) {
       try (Statement stmt = conn.createStatement()) {
-        stmt.execute("DROP TABLE IF EXISTS " + POSTGRES_TABLE_NAME + "_history CASCADE");
+        stmt.execute("DROP TABLE IF EXISTS " + POSTGRES_TABLE_NAME + "_temporal CASCADE");
         stmt.execute("DROP TABLE IF EXISTS " + POSTGRES_TABLE_NAME + " CASCADE");
       }
     } catch (Exception e) {
@@ -557,7 +558,7 @@ public class DataPopulatorIntegrationTest {
       try (Statement stmt = conn.createStatement()) {
         stmt.execute("CREATE TABLE IF NOT EXISTS "
           + POSTGRES_TABLE_NAME
-          + "_history (LIKE "
+          + "_temporal (LIKE "
           + POSTGRES_TABLE_NAME
           + ")");
       }
@@ -573,7 +574,7 @@ public class DataPopulatorIntegrationTest {
           + " "
           + "FOR EACH ROW EXECUTE PROCEDURE versioning('sys_period', '"
           + POSTGRES_TABLE_NAME
-          + "_history', true)");
+          + "_temporal', true)");
       }
 
       String insertSql = "INSERT INTO " + POSTGRES_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
@@ -629,7 +630,7 @@ public class DataPopulatorIntegrationTest {
           + "  UNION ALL "
           + "  SELECT id, name, address, sys_period FROM "
           + POSTGRES_TABLE_NAME
-          + "_history"
+          + "_temporal"
           + ") AS combined "
           + "WHERE sys_period @> '"
           + capturedTimestamp
@@ -678,7 +679,7 @@ public class DataPopulatorIntegrationTest {
   }
 
   private void connectToTrino() throws SQLException {
-    try (Connection connection = DriverManager.getConnection("jdbc:trino://localhost:8080", "trino", "")) {
+    try (Connection connection = DriverManager.getConnection("jdbc:trino://localhost:8082", "trino", "")) {
       logger.info("Successfully connected to Trino");
 
       int numRecords = 0;

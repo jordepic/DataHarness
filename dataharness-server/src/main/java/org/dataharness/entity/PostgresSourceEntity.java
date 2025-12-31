@@ -53,6 +53,15 @@ public class PostgresSourceEntity {
     @Column(name = "read_timestamp", nullable = false)
     private long readTimestamp;
 
+    @Column(name = "history_table_name", nullable = false)
+    private String historyTableName;
+
+    @Column(name = "table_name_no_tstzrange", nullable = false)
+    private String tableNameNoTstzrange;
+
+    @Column(name = "history_table_name_no_tstzrange", nullable = false)
+    private String historyTableNameNoTstzrange;
+
     public PostgresSourceEntity() {}
 
     public PostgresSourceEntity(
@@ -63,7 +72,10 @@ public class PostgresSourceEntity {
             String jdbcUrl,
             String username,
             String password,
-            long readTimestamp) {
+            long readTimestamp,
+            String historyTableName,
+            String tableNameNoTstzrange,
+            String historyTableNameNoTstzrange) {
         this.tableId = tableId;
         this.trinoCatalogName = trinoCatalogName;
         this.trinoSchemaName = trinoSchemaName;
@@ -72,6 +84,9 @@ public class PostgresSourceEntity {
         this.username = username;
         this.password = password;
         this.readTimestamp = readTimestamp;
+        this.historyTableName = historyTableName;
+        this.tableNameNoTstzrange = tableNameNoTstzrange;
+        this.historyTableNameNoTstzrange = historyTableNameNoTstzrange;
     }
 
     public long getId() {
@@ -144,5 +159,29 @@ public class PostgresSourceEntity {
 
     public void setReadTimestamp(long readTimestamp) {
         this.readTimestamp = readTimestamp;
+    }
+
+    public String getHistoryTableName() {
+        return historyTableName;
+    }
+
+    public void setHistoryTableName(String historyTableName) {
+        this.historyTableName = historyTableName;
+    }
+
+    public String getTableNameNoTstzrange() {
+        return tableNameNoTstzrange;
+    }
+
+    public void setTableNameNoTstzrange(String tableNameNoTstzrange) {
+        this.tableNameNoTstzrange = tableNameNoTstzrange;
+    }
+
+    public String getHistoryTableNameNoTstzrange() {
+        return historyTableNameNoTstzrange;
+    }
+
+    public void setHistoryTableNameNoTstzrange(String historyTableNameNoTstzrange) {
+        this.historyTableNameNoTstzrange = historyTableNameNoTstzrange;
     }
 }

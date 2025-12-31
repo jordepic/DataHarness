@@ -199,6 +199,9 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                             existing.setUsername(postgresMsg.getUsername());
                             existing.setPassword(postgresMsg.getPassword());
                             existing.setReadTimestamp(postgresMsg.getReadTimestamp());
+                            existing.setHistoryTableName(postgresMsg.getHistoryTableName());
+                            existing.setTableNameNoTstzrange(postgresMsg.getTableNameNoTstzrange());
+                            existing.setHistoryTableNameNoTstzrange(postgresMsg.getHistoryTableNameNoTstzrange());
                             session.merge(existing);
                         } else {
                             PostgresSourceEntity entity = new PostgresSourceEntity(
@@ -209,7 +212,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                                     postgresMsg.getJdbcUrl(),
                                     postgresMsg.getUsername(),
                                     postgresMsg.getPassword(),
-                                    postgresMsg.getReadTimestamp());
+                                    postgresMsg.getReadTimestamp(),
+                                    postgresMsg.getHistoryTableName(),
+                                    postgresMsg.getTableNameNoTstzrange(),
+                                    postgresMsg.getHistoryTableNameNoTstzrange());
                             session.persist(entity);
                         }
                     }
@@ -368,6 +374,16 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                             .setUsername(postgres.getUsername())
                             .setPassword(postgres.getPassword())
                             .setReadTimestamp(postgres.getReadTimestamp())
+                            .setHistoryTableName(
+                                    postgres.getHistoryTableName() != null ? postgres.getHistoryTableName() : "")
+                            .setTableNameNoTstzrange(
+                                    postgres.getTableNameNoTstzrange() != null
+                                            ? postgres.getTableNameNoTstzrange()
+                                            : "")
+                            .setHistoryTableNameNoTstzrange(
+                                    postgres.getHistoryTableNameNoTstzrange() != null
+                                            ? postgres.getHistoryTableNameNoTstzrange()
+                                            : "")
                             .build();
 
                     TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
