@@ -1,0 +1,5 @@
+FROM trinodb/trino:476
+
+COPY dataharness-trino/target/dataharness-trino-1.0-SNAPSHOT.zip /tmp/dataharness-trino.zip
+
+RUN cd /usr/lib/trino/plugin && jar xf /tmp/dataharness-trino.zip && mv dataharness-trino-1.0-SNAPSHOT dataharness-trino

@@ -117,7 +117,9 @@ services:
       - "50051:50051"
 
   trino:
-    image: trinodb/trino:latest
+    build:
+      context: ../../../../../../../
+      dockerfile: dataharness-server/src/test/java/org/dataharness/bootstrap/Dockerfile.trino
     container_name: trino
     depends_on:
       - kafka
@@ -135,6 +137,7 @@ services:
       - ./etc/catalog/kafka.properties:/etc/trino/catalog/kafka.properties:ro
       - ./etc/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
       - ./etc/catalog/postgresql.properties:/etc/trino/catalog/postgresql.properties:ro
+      - ./etc/catalog/data_harness.properties:/etc/trino/catalog/data_harness.properties:ro
 
   spark:
     image: apache/spark:latest
