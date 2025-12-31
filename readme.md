@@ -26,6 +26,15 @@ suited towards your pipeline.
 - **Multi-Source Support**: Seamlessly integrate Kafka topics, relational databases, data lakes, and more
 - **Multi-Query Engine Support**: Currently developing for Spark and Trino, with plans to expand
 
+The DataHarness is simply a powerful building-block for fusing many data systems together into a single table.
+It allows
+
+- Atomic schema updates
+- Transactional data movement between sources
+
+Developers can use the DataHarness to build out complete HTAP solutions and improve upon existing "object-store-only"
+based table formats.
+
 ## What Can Be A Data Source?
 
 For a data system to work as a "source" for a harness table, it must only satisfy one constraint:
@@ -141,7 +150,7 @@ localhost:50051.
 | Amazon Kinesis with Protobuf Encoded Data                    |              |              |
 | Azure Event Hubs with Avro Encoded Data                      |              |              |
 | Azure Event Hubs with Protobuf Encoded Data                  |              |              |
-| PostgreSQL (Temporal Tables Extension)                       | ✅            |              |
+| PostgreSQL (Temporal Tables Extension)                       | ✅            | ✅            |
 | YugaByteDB (Postgres compatible)                             | ✅            |              |
 | YugaByteDB (Cassandra compatible)                            |              |              |
 | CockroachDB (Postgres compatible)                            |              |              |
@@ -205,7 +214,37 @@ NOTE:
 
 ## Reading Data Harness Tables From Apache Trino
 
-TODO
+For Trino, setting up the Data Harness is fairly simple!
+
+1. Set up all data sources like you normally would (e.g. configure kafka catalog, postgres catalog, iceberg catalog
+   individually)
+2. Add a "data harness" catalog
+    - Since this is a custom plugin, you should follow the directions to install them from
+      the [trino docs](https://trino.io/docs/current/installation/plugins.html#installation)
+    - We have an example of extracting the zip file and putting it in the trino docker
+      image [here](/Users/jordanepstein/data/DataHarness/dataharness-server/src/test/java/org/dataharness/bootstrap/Dockerfile.trino)
+3. In each of your table "sources", be sure to set the appropriate Trino catalog name and schema name that you used for
+   your catalogs in step 1
+
+## Setting Up PostgreSQL Sources
+
+By default, PostgreSQL does not support time travel reads. However, there are extensions that enable this functionality.
+
+The DataHarness project currently supports Postgres databases that use one of the two following extensions:
+
+- [Temporal Tables](https://github.com/arkhipov/temporal_tables)
+- [Temporal Tables (PgSQL Based)](https://github.com/nearform/temporal_tables)
+
+These extensions allow creating a second table for data auditing that allows us to perform time travel reads.
+
+1) The audit table should have all of the same data columns as the main table
+    - It can be indexed in any way you see fit (all of our queries to this table are inherently timestamp column based)
+2) These plugins use the tstzrange column to establish a timestamp bound for the validity of each row
+    - The Trino Postgres plugin does not support these
+    - To work in Trino, you must create a view for the "current" table and "audit" (or history) table which extracts the
+      range column to two simple timestamp columns called `tsstart` and `tsend`
+        - You can see an example of how to do this
+          in [DataPopulatorIntegrationTest](dataharness-server/src/test/java/org/dataharness/bootstrap/DataPopulatorIntegrationTest.java)
 
 ## Contributing Guide
 
