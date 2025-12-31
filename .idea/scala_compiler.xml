@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaCompilerConfiguration">
-    <profile name="Maven 1" modules="dataharness-spark-catalog">
+    <profile name="Maven 1" modules="dataharness-spark,dataharness-spark-catalog">
       <option name="compileOrder" value="JavaThenScala" />
       <parameters>
         <parameter value="-target:jvm-17" />

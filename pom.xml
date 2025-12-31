@@ -420,10 +420,9 @@
                 <exclude>**/*Grpc.java</exclude>
                 <exclude>**/*OuterClass.java</exclude>
               </excludes>
-              <googleJavaFormat>
-                <version>1.33.0</version>
-                <style>GOOGLE</style>
-              </googleJavaFormat>
+              <palantirJavaFormat>
+                <version>2.83.0</version>
+              </palantirJavaFormat>
               <removeUnusedImports/>
               <importOrder/>
               <toggleOffOn/>

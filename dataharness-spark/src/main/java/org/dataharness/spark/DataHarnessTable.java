@@ -9,30 +9,30 @@ import org.dataharness.proto.LoadTableResponse;
 
 public class DataHarnessTable implements Table {
 
-  private final String tableName;
-  private final LoadTableResponse response;
+    private final String tableName;
+    private final LoadTableResponse response;
 
-  public DataHarnessTable(String tableName, LoadTableResponse response) {
-    this.tableName = tableName;
-    this.response = response;
-  }
+    public DataHarnessTable(String tableName, LoadTableResponse response) {
+        this.tableName = tableName;
+        this.response = response;
+    }
 
-  public LoadTableResponse getResponse() {
-    return response;
-  }
+    public LoadTableResponse getResponse() {
+        return response;
+    }
 
-  @Override
-  public String name() {
-    return tableName;
-  }
+    @Override
+    public String name() {
+        return tableName;
+    }
 
-  @Override
-  public StructType schema() {
-    return DataHarnessSchemaExtractor.extractSchema(tableName, response);
-  }
+    @Override
+    public StructType schema() {
+        return DataHarnessSchemaExtractor.extractSchema(tableName, response);
+    }
 
-  @Override
-  public Set<TableCapability> capabilities() {
-    return Collections.emptySet();
-  }
+    @Override
+    public Set<TableCapability> capabilities() {
+        return Collections.emptySet();
+    }
 }

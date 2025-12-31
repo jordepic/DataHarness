@@ -12,29 +12,28 @@ import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.transaction.IsolationLevel;
 
 public class DataHarnessConnector implements Connector {
-  private final LifeCycleManager lifeCycleManager;
-  private final DataHarnessMetadata metadata;
+    private final LifeCycleManager lifeCycleManager;
+    private final DataHarnessMetadata metadata;
 
-  @Inject
-  public DataHarnessConnector(LifeCycleManager lifeCycleManager, DataHarnessMetadata metadata) {
-    this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
-    this.metadata = requireNonNull(metadata, "metadata is null");
-  }
+    @Inject
+    public DataHarnessConnector(LifeCycleManager lifeCycleManager, DataHarnessMetadata metadata) {
+        this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
+        this.metadata = requireNonNull(metadata, "metadata is null");
+    }
 
-  @Override
-  public ConnectorTransactionHandle beginTransaction(
-      IsolationLevel isolationLevel, boolean readOnly, boolean autoCommit) {
-    return INSTANCE;
-  }
+    @Override
+    public ConnectorTransactionHandle beginTransaction(
+            IsolationLevel isolationLevel, boolean readOnly, boolean autoCommit) {
+        return INSTANCE;
+    }
 
-  @Override
-  public ConnectorMetadata getMetadata(
-      ConnectorSession session, ConnectorTransactionHandle transactionHandle) {
-    return metadata;
-  }
+    @Override
+    public ConnectorMetadata getMetadata(ConnectorSession session, ConnectorTransactionHandle transactionHandle) {
+        return metadata;
+    }
 
-  @Override
-  public final void shutdown() {
-    lifeCycleManager.stop();
-  }
+    @Override
+    public final void shutdown() {
+        lifeCycleManager.stop();
+    }
 }

@@ -12,180 +12,180 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "kafka_sources",
-    indexes = {
-      @Index(
-          name = "idx_kafka_sources_table_id_topic_partition",
-          columnList = "table_id, topic_name, partition_number",
-          unique = true)
-    },
-    uniqueConstraints = {
-      @UniqueConstraint(
-          name = "uk_kafka_sources_table_id_topic_partition",
-          columnNames = {"table_id", "topic_name", "partition_number"})
-    })
+        name = "kafka_sources",
+        indexes = {
+            @Index(
+                    name = "idx_kafka_sources_table_id_topic_partition",
+                    columnList = "table_id, topic_name, partition_number",
+                    unique = true)
+        },
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_kafka_sources_table_id_topic_partition",
+                    columnNames = {"table_id", "topic_name", "partition_number"})
+        })
 public class KafkaSourceEntity {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
 
-  @Column(name = "table_id", nullable = false)
-  private long tableId;
+    @Column(name = "table_id", nullable = false)
+    private long tableId;
 
-  @Column(name = "trino_catalog_name", nullable = false)
-  private String trinoCatalogName;
+    @Column(name = "trino_catalog_name", nullable = false)
+    private String trinoCatalogName;
 
-  @Column(name = "trino_schema_name", nullable = false)
-  private String trinoSchemaName;
+    @Column(name = "trino_schema_name", nullable = false)
+    private String trinoSchemaName;
 
-  @Column(name = "start_offset", nullable = false)
-  private long startOffset;
+    @Column(name = "start_offset", nullable = false)
+    private long startOffset;
 
-  @Column(name = "end_offset", nullable = false)
-  private long endOffset;
+    @Column(name = "end_offset", nullable = false)
+    private long endOffset;
 
-  @Column(name = "partition_number", nullable = false)
-  private int partitionNumber;
+    @Column(name = "partition_number", nullable = false)
+    private int partitionNumber;
 
-  @Column(name = "topic_name", nullable = false)
-  private String topicName;
+    @Column(name = "topic_name", nullable = false)
+    private String topicName;
 
-  @Column(name = "broker_urls")
-  private String brokerUrls;
+    @Column(name = "broker_urls")
+    private String brokerUrls;
 
-  @Column(name = "schema_type")
-  private int schemaType;
+    @Column(name = "schema_type")
+    private int schemaType;
 
-  @Column(name = "schema")
-  private String schema;
+    @Column(name = "schema")
+    private String schema;
 
-  public KafkaSourceEntity() {}
+    public KafkaSourceEntity() {}
 
-  public KafkaSourceEntity(
-      long tableId,
-      String trinoCatalogName,
-      String trinoSchemaName,
-      long startOffset,
-      long endOffset,
-      int partitionNumber,
-      String topicName) {
-    this.tableId = tableId;
-    this.trinoCatalogName = trinoCatalogName;
-    this.trinoSchemaName = trinoSchemaName;
-    this.startOffset = startOffset;
-    this.endOffset = endOffset;
-    this.partitionNumber = partitionNumber;
-    this.topicName = topicName;
-  }
+    public KafkaSourceEntity(
+            long tableId,
+            String trinoCatalogName,
+            String trinoSchemaName,
+            long startOffset,
+            long endOffset,
+            int partitionNumber,
+            String topicName) {
+        this.tableId = tableId;
+        this.trinoCatalogName = trinoCatalogName;
+        this.trinoSchemaName = trinoSchemaName;
+        this.startOffset = startOffset;
+        this.endOffset = endOffset;
+        this.partitionNumber = partitionNumber;
+        this.topicName = topicName;
+    }
 
-  public KafkaSourceEntity(
-      long tableId,
-      String trinoCatalogName,
-      String trinoSchemaName,
-      long startOffset,
-      long endOffset,
-      int partitionNumber,
-      String topicName,
-      String brokerUrls,
-      int schemaType,
-      String schema) {
-    this.tableId = tableId;
-    this.trinoCatalogName = trinoCatalogName;
-    this.trinoSchemaName = trinoSchemaName;
-    this.startOffset = startOffset;
-    this.endOffset = endOffset;
-    this.partitionNumber = partitionNumber;
-    this.topicName = topicName;
-    this.brokerUrls = brokerUrls;
-    this.schemaType = schemaType;
-    this.schema = schema;
-  }
+    public KafkaSourceEntity(
+            long tableId,
+            String trinoCatalogName,
+            String trinoSchemaName,
+            long startOffset,
+            long endOffset,
+            int partitionNumber,
+            String topicName,
+            String brokerUrls,
+            int schemaType,
+            String schema) {
+        this.tableId = tableId;
+        this.trinoCatalogName = trinoCatalogName;
+        this.trinoSchemaName = trinoSchemaName;
+        this.startOffset = startOffset;
+        this.endOffset = endOffset;
+        this.partitionNumber = partitionNumber;
+        this.topicName = topicName;
+        this.brokerUrls = brokerUrls;
+        this.schemaType = schemaType;
+        this.schema = schema;
+    }
 
-  public long getId() {
-    return id;
-  }
+    public long getId() {
+        return id;
+    }
 
-  public void setId(long id) {
-    this.id = id;
-  }
+    public void setId(long id) {
+        this.id = id;
+    }
 
-  public long getTableId() {
-    return tableId;
-  }
+    public long getTableId() {
+        return tableId;
+    }
 
-  public void setTableId(long tableId) {
-    this.tableId = tableId;
-  }
+    public void setTableId(long tableId) {
+        this.tableId = tableId;
+    }
 
-  public String getTrinoCatalogName() {
-    return trinoCatalogName;
-  }
+    public String getTrinoCatalogName() {
+        return trinoCatalogName;
+    }
 
-  public void setTrinoCatalogName(String trinoCatalogName) {
-    this.trinoCatalogName = trinoCatalogName;
-  }
+    public void setTrinoCatalogName(String trinoCatalogName) {
+        this.trinoCatalogName = trinoCatalogName;
+    }
 
-  public String getTrinoSchemaName() {
-    return trinoSchemaName;
-  }
+    public String getTrinoSchemaName() {
+        return trinoSchemaName;
+    }
 
-  public void setTrinoSchemaName(String trinoSchemaName) {
-    this.trinoSchemaName = trinoSchemaName;
-  }
+    public void setTrinoSchemaName(String trinoSchemaName) {
+        this.trinoSchemaName = trinoSchemaName;
+    }
 
-  public long getStartOffset() {
-    return startOffset;
-  }
+    public long getStartOffset() {
+        return startOffset;
+    }
 
-  public void setStartOffset(long startOffset) {
-    this.startOffset = startOffset;
-  }
+    public void setStartOffset(long startOffset) {
+        this.startOffset = startOffset;
+    }
 
-  public long getEndOffset() {
-    return endOffset;
-  }
+    public long getEndOffset() {
+        return endOffset;
+    }
 
-  public void setEndOffset(long endOffset) {
-    this.endOffset = endOffset;
-  }
+    public void setEndOffset(long endOffset) {
+        this.endOffset = endOffset;
+    }
 
-  public int getPartitionNumber() {
-    return partitionNumber;
-  }
+    public int getPartitionNumber() {
+        return partitionNumber;
+    }
 
-  public void setPartitionNumber(int partitionNumber) {
-    this.partitionNumber = partitionNumber;
-  }
+    public void setPartitionNumber(int partitionNumber) {
+        this.partitionNumber = partitionNumber;
+    }
 
-  public String getTopicName() {
-    return topicName;
-  }
+    public String getTopicName() {
+        return topicName;
+    }
 
-  public void setTopicName(String topicName) {
-    this.topicName = topicName;
-  }
+    public void setTopicName(String topicName) {
+        this.topicName = topicName;
+    }
 
-  public String getBrokerUrls() {
-    return brokerUrls;
-  }
+    public String getBrokerUrls() {
+        return brokerUrls;
+    }
 
-  public void setBrokerUrls(String brokerUrls) {
-    this.brokerUrls = brokerUrls;
-  }
+    public void setBrokerUrls(String brokerUrls) {
+        this.brokerUrls = brokerUrls;
+    }
 
-  public int getSchemaType() {
-    return schemaType;
-  }
+    public int getSchemaType() {
+        return schemaType;
+    }
 
-  public void setSchemaType(int schemaType) {
-    this.schemaType = schemaType;
-  }
+    public void setSchemaType(int schemaType) {
+        this.schemaType = schemaType;
+    }
 
-  public String getSchema() {
-    return schema;
-  }
+    public String getSchema() {
+        return schema;
+    }
 
-  public void setSchema(String schema) {
-    this.schema = schema;
-  }
+    public void setSchema(String schema) {
+        this.schema = schema;
+    }
 }

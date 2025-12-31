@@ -11,68 +11,68 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(
-    name = "data_harness_table",
-    indexes = {@Index(name = "idx_data_harness_table_name", columnList = "name", unique = true)})
+        name = "data_harness_table",
+        indexes = {@Index(name = "idx_data_harness_table_name", columnList = "name", unique = true)})
 public class DataHarnessTable {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
 
-  @Column(nullable = false, unique = true)
-  private String name;
+    @Column(nullable = false, unique = true)
+    private String name;
 
-  @Column(nullable = true, columnDefinition = "TEXT")
-  private String avroSchema;
+    @Column(nullable = true, columnDefinition = "TEXT")
+    private String avroSchema;
 
-  @Column(nullable = true, columnDefinition = "TEXT")
-  private String icebergSchema;
+    @Column(nullable = true, columnDefinition = "TEXT")
+    private String icebergSchema;
 
-  @Column(nullable = true, columnDefinition = "TEXT")
-  private String protobufSchema;
+    @Column(nullable = true, columnDefinition = "TEXT")
+    private String protobufSchema;
 
-  public DataHarnessTable() {}
+    public DataHarnessTable() {}
 
-  public DataHarnessTable(String name) {
-    this.name = name;
-  }
+    public DataHarnessTable(String name) {
+        this.name = name;
+    }
 
-  public long getId() {
-    return id;
-  }
+    public long getId() {
+        return id;
+    }
 
-  public void setId(long id) {
-    this.id = id;
-  }
+    public void setId(long id) {
+        this.id = id;
+    }
 
-  public String getName() {
-    return name;
-  }
+    public String getName() {
+        return name;
+    }
 
-  public void setName(String name) {
-    this.name = name;
-  }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-  public String getAvroSchema() {
-    return avroSchema;
-  }
+    public String getAvroSchema() {
+        return avroSchema;
+    }
 
-  public void setAvroSchema(String avroSchema) {
-    this.avroSchema = avroSchema;
-  }
+    public void setAvroSchema(String avroSchema) {
+        this.avroSchema = avroSchema;
+    }
 
-  public String getIcebergSchema() {
-    return icebergSchema;
-  }
+    public String getIcebergSchema() {
+        return icebergSchema;
+    }
 
-  public void setIcebergSchema(String icebergSchema) {
-    this.icebergSchema = icebergSchema;
-  }
+    public void setIcebergSchema(String icebergSchema) {
+        this.icebergSchema = icebergSchema;
+    }
 
-  public String getProtobufSchema() {
-    return protobufSchema;
-  }
+    public String getProtobufSchema() {
+        return protobufSchema;
+    }
 
-  public void setProtobufSchema(String protobufSchema) {
-    this.protobufSchema = protobufSchema;
-  }
+    public void setProtobufSchema(String protobufSchema) {
+        this.protobufSchema = protobufSchema;
+    }
 }

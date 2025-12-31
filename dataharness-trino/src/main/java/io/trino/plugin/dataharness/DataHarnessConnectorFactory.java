@@ -13,28 +13,23 @@ import io.trino.spi.connector.ConnectorFactory;
 import java.util.Map;
 
 public class DataHarnessConnectorFactory implements ConnectorFactory {
-  @Override
-  public String getName() {
-    return "data_harness";
-  }
+    @Override
+    public String getName() {
+        return "data_harness";
+    }
 
-  @Override
-  public Connector create(
-      String catalogName, Map<String, String> requiredConfig, ConnectorContext context) {
-    requireNonNull(requiredConfig, "requiredConfig is null");
-    checkStrictSpiVersionMatch(context, this);
+    @Override
+    public Connector create(String catalogName, Map<String, String> requiredConfig, ConnectorContext context) {
+        requireNonNull(requiredConfig, "requiredConfig is null");
+        checkStrictSpiVersionMatch(context, this);
 
-    Bootstrap app =
-        new Bootstrap(
-            new JsonModule(),
-            new TypeDeserializerModule(context.getTypeManager()),
-            new DataHarnessModule());
+        Bootstrap app = new Bootstrap(
+                new JsonModule(), new TypeDeserializerModule(context.getTypeManager()), new DataHarnessModule());
 
-    Injector injector =
-        app.doNotInitializeLogging()
-            .setRequiredConfigurationProperties(requiredConfig)
-            .initialize();
+        Injector injector = app.doNotInitializeLogging()
+                .setRequiredConfigurationProperties(requiredConfig)
+                .initialize();
 
-    return injector.getInstance(DataHarnessConnector.class);
-  }
+        return injector.getInstance(DataHarnessConnector.class);
+    }
 }
