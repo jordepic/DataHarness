@@ -35,6 +35,25 @@ It allows
 Developers can use the DataHarness to build out complete HTAP solutions and improve upon existing "object-store-only"
 based table formats.
 
+## Reading From The Data Harness
+
+When reading a data harness table, the query engine first consults the data harness to figure out the state to pull from
+each data source. Having a single source of truth for table source offsets/read version ensures that we can move data
+between our sources and still see the table in a consistent state. Now,
+we can see table data the moment it is published to kafka, achieve fast
+"upserts" in Postgres, and store cold data in Iceberg!
+
+![img.png](read_path.png)
+
+## Simple Data Pipelines For Data Harness Tables
+
+Many data pipelines, especially with Apache Iceberg, rely on using something like
+Kafka Connect or Apache Flink for achieving exactly once semantics. Having a stream-consumer agnostic
+state store allows developers to avoid the need to use complicated frameworks for simple pipelines. On a consumer
+failure, use the DataHarness to determine which offsets to recover from.
+
+![img.png](write_path.png)
+
 ## What Can Be A Data Source?
 
 For a data system to work as a "source" for a harness table, it must only satisfy one constraint:
