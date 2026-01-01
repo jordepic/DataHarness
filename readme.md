@@ -246,6 +246,48 @@ These extensions allow creating a second table for data auditing that allows us 
         - You can see an example of how to do this
           in [DataPopulatorIntegrationTest](dataharness-server/src/test/java/org/dataharness/bootstrap/DataPopulatorIntegrationTest.java)
 
+## Why Not Mooncake?
+
+You can read more about [Mooncake here.](https://www.mooncake.dev/whitepaper)
+
+Mooncake is a project that seamlessly integrates PostgreSQL and Iceberg.
+
+Internally it allows:
+
+1) Converting postgres data into queryable in-memory arrow buffers and occasionally committing them to iceberg
+    - This allows minimizing the number of commits to iceberg
+    - These are more optimized for analytical workloads
+    - Mooncake keeps an optimized in-memory index of row to iceberg file for faster upserts with positional
+      deletes/deletion vectors
+2) Querying the arrow buffers from an embedded duckdb instance within Postgres
+    - That data is then combined with the flushed iceberg files
+
+This approach significantly speeds up the rate at which data is ready to be analyzed.
+
+In my opinion, it offers two main drawbacks:
+
+1) You must use the same Postgres instance to query the arrow buffers, as opposed to being able to include them in
+   distributed queries
+2) Mooncake development is currently heavily biased towards postgres and iceberg (though they claim this is prone to
+   change)
+    - This could result into lock in into the iceberg table format for analytics as opposed to another one
+    - You could make the argument that data harness currently only supports iceberg (though it's trivial to extend)
+
+With DataHarness, your data is accessible from the vast majority of popular query engines, and you don't lose the
+ability
+to perform distributed queries across your OLTP and OLAP data while still getting better data freshness.
+
+In the future, I hope that there is room for DataHarness and Mooncake to work together.
+
+1) Mooncake still performs CDC from a postgres table into arrow buffers in-memory on an arrow flight server
+2) The arrow flight server is a DataHarness source
+    - Presto can [already read arrow flight data](https://prestodb.io/docs/current/connector/base-arrow-flight.html)
+
+DataHarness is not opinionated on the CDC framework that you use. It is simply a primitive to build correct and complex
+distributed tables.
+
 ## Contributing Guide
 
-TODO
+Go ahead and file a PR! Since this is such a small project for now, I'll individually review them all.
+
+If the project gains popularity, I'll establish a more formal committee.
