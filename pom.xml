@@ -37,6 +37,7 @@
     <jib-maven-plugin.version>3.4.0</jib-maven-plugin.version>
     <jol.version>0.17</jol.version>
     <junit-jupiter.version>5.10.0</junit-jupiter.version>
+    <license-maven-plugin.version>4.3</license-maven-plugin.version>
     <kafka.version>3.6.0</kafka.version>
     <logback.version>1.5.13</logback.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
@@ -518,6 +519,48 @@
           <artifactId>protobuf-maven-plugin</artifactId>
           <version>${protobuf-maven-plugin.version}</version>
         </plugin>
+        <plugin>
+          <groupId>com.mycila</groupId>
+          <artifactId>license-maven-plugin</artifactId>
+          <version>${license-maven-plugin.version}</version>
+          <configuration>
+            <header>com/mycila/maven/plugin/license/templates/MIT.txt</header>
+            <properties>
+              <owner>Jordan Epstein</owner>
+              <email>contact@dataharness.dev</email>
+              <year>2026</year>
+            </properties>
+            <excludes>
+              <exclude>**/target/**</exclude>
+              <exclude>**/.git/**</exclude>
+              <exclude>**/.idea/**</exclude>
+              <exclude>**/.vscode/**</exclude>
+              <exclude>**/node_modules/**</exclude>
+              <exclude>**/*.proto</exclude>
+              <exclude>**/pom.xml</exclude>
+              <exclude>**/*.md</exclude>
+              <exclude>**/*.txt</exclude>
+              <exclude>**/*.yaml</exclude>
+              <exclude>**/*.yml</exclude>
+              <exclude>**/*.json</exclude>
+              <exclude>**/Dockerfile</exclude>
+              <exclude>**/.flattened-pom.xml</exclude>
+            </excludes>
+            <includes>
+              <include>src/**</include>
+            </includes>
+            <skipExistingHeaders>false</skipExistingHeaders>
+          </configuration>
+          <executions>
+            <execution>
+              <id>license-check</id>
+              <goals>
+                <goal>check</goal>
+              </goals>
+              <phase>validate</phase>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -552,6 +595,10 @@
             <phase>clean</phase>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
       </plugin>
     </plugins>
     <extensions>

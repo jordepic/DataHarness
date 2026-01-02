@@ -307,6 +307,12 @@ distributed tables.
 
 ## Contributing Guide
 
+This project uses this MIT license.
+
 Go ahead and file a PR! Since this is such a small project for now, I'll individually review them all.
 
 If the project gains popularity, I'll establish a more formal committee.
+
+## Deploying
+
+For very simple docker images/helm charts, see the [docker hub](https://hub.docker.com/r/jordepic/data-harness/tags).
