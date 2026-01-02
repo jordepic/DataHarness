@@ -1,0 +1,14 @@
+dataHarness:
+  image:
+    repository: jordepic/data-harness
+    tag: latest
+  replicas: 1
+
+postgres:
+  image:
+    repository: postgres
+    tag: "15"
+  replicas: 1
+  database: dataharness
+  username: postgres
+  password: postgres

@@ -3,6 +3,7 @@ package org.dataharness.server;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import java.io.IOException;
 import org.dataharness.service.CatalogServiceImpl;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ public class GrpcServer {
         int port = Integer.parseInt(System.getProperty(PORT_PROPERTY, String.valueOf(DEFAULT_PORT)));
         server = ServerBuilder.forPort(port)
                 .addService(new CatalogServiceImpl())
+                .addService(ProtoReflectionService.newInstance())
                 .build()
                 .start();
 

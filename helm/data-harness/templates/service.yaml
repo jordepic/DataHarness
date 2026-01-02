@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-harness
+  labels:
+    app: data-harness
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ .Values.dataHarness.port }}
+    targetPort: {{ .Values.dataHarness.port }}
+    protocol: TCP
+  selector:
+    app: data-harness

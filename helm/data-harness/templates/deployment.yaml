@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-harness
+  labels:
+    app: data-harness
+spec:
+  replicas: {{ .Values.dataHarness.replicas }}
+  selector:
+    matchLabels:
+      app: data-harness
+  template:
+    metadata:
+      labels:
+        app: data-harness
+    spec:
+      containers:
+      - name: data-harness
+        image: "{{ .Values.dataHarness.image.repository }}:{{ .Values.dataHarness.image.tag }}"
