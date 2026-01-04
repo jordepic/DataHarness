@@ -1,0 +1,23 @@
+title: DataHarness
+description: A unified abstraction layer for multiple table sources
+baseurl: /DataHarness
+url: https://jordanepstein.github.io
+
+theme: minima
+
+plugins:
+  - jekyll-feed
+
+exclude:
+  - .gitignore
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - vendor/
+
+markdown: kramdown
+
+collections:
+  blog:
+    output: true
+    permalink: /blog/:name
