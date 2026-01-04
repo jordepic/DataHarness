@@ -63,47 +63,51 @@ message LoadTableResponse {
 }
 
 message KafkaSourceMessage {
-  string trino_catalog_name = 1;
-  string trino_schema_name = 2;
-  int64 start_offset = 3;
-  int64 end_offset = 4;
-  int32 partition_number = 5;
-  string topic_name = 6;
-  string broker_urls = 7;
-  SchemaType schema_type = 8;
-  string schema = 9;
+  string name = 1;
+  string trino_catalog_name = 2;
+  string trino_schema_name = 3;
+  int64 start_offset = 4;
+  int64 end_offset = 5;
+  int32 partition_number = 6;
+  string topic_name = 7;
+  string broker_urls = 8;
+  SchemaType schema_type = 9;
+  string schema = 10;
 }
 
 message IcebergSourceMessage {
-  string trino_catalog_name = 1;
-  string trino_schema_name = 2;
-  string table_name = 3;
-  int64 read_timestamp = 4;
-  string spark_catalog_name = 5;
-  string spark_schema_name = 6;
+  string name = 1;
+  string trino_catalog_name = 2;
+  string trino_schema_name = 3;
+  string table_name = 4;
+  int64 read_timestamp = 5;
+  string spark_catalog_name = 6;
+  string spark_schema_name = 7;
 }
 
 message YugabyteDBSourceMessage {
-  string trino_catalog_name = 1;
-  string trino_schema_name = 2;
-  string table_name = 3;
-  string jdbc_url = 4;
-  string username = 5;
-  string password = 6;
-  int64 read_timestamp = 7;
+  string name = 1;
+  string trino_catalog_name = 2;
+  string trino_schema_name = 3;
+  string table_name = 4;
+  string jdbc_url = 5;
+  string username = 6;
+  string password = 7;
+  int64 read_timestamp = 8;
 }
 
 message PostgresDBSourceMessage {
-  string trino_catalog_name = 1;
-  string trino_schema_name = 2;
-  string table_name = 3;
-  string jdbc_url = 4;
-  string username = 5;
-  string password = 6;
-  int64 read_timestamp = 7;
-  string history_table_name = 8;
-  string table_name_no_tstzrange = 9;
-  string history_table_name_no_tstzrange = 10;
+  string name = 1;
+  string trino_catalog_name = 2;
+  string trino_schema_name = 3;
+  string table_name = 4;
+  string jdbc_url = 5;
+  string username = 6;
+  string password = 7;
+  int64 read_timestamp = 8;
+  string history_table_name = 9;
+  string table_name_no_tstzrange = 10;
+  string history_table_name_no_tstzrange = 11;
 }
 
 message TableSourceMessage {

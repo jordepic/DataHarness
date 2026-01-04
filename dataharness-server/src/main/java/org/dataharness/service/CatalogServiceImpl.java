@@ -26,11 +26,7 @@ package org.dataharness.service;
 import io.grpc.stub.StreamObserver;
 import java.util.List;
 import org.dataharness.db.HibernateSessionManager;
-import org.dataharness.entity.DataHarnessTable;
-import org.dataharness.entity.IcebergSourceEntity;
-import org.dataharness.entity.KafkaSourceEntity;
-import org.dataharness.entity.PostgresSourceEntity;
-import org.dataharness.entity.YugabyteSourceEntity;
+import org.dataharness.entity.*;
 import org.dataharness.proto.*;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -48,49 +44,35 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     /**
      * Creates a new DataHarnessTable with the given name.
      *
-     * @param request The create table request
+     * @param request          The create table request
      * @param responseObserver The observer to send the response to
      */
     @Override
     public void createTable(CreateTableRequest request, StreamObserver<CreateTableResponse> responseObserver) {
 
         try (Session session = HibernateSessionManager.getSession()) {
-            Transaction transaction = session.beginTransaction();
-
             String tableName = request.getName();
 
             if (tableName.isEmpty()) {
-                transaction.rollback();
                 responseObserver.onError(new IllegalArgumentException("Table name cannot be null or empty"));
                 return;
             }
 
-            try {
-                DataHarnessTable table = new DataHarnessTable(tableName);
-                session.persist(table);
-                transaction.commit();
+            Transaction transaction = session.beginTransaction();
+            DataHarnessTable table = new DataHarnessTable(tableName);
+            session.persist(table);
+            transaction.commit();
 
-                CreateTableResponse response = CreateTableResponse.newBuilder()
-                        .setSuccess(true)
-                        .setMessage("Table created successfully")
-                        .setTableId(table.getId())
-                        .build();
+            CreateTableResponse response = CreateTableResponse.newBuilder()
+                    .setSuccess(true)
+                    .setMessage("Table created successfully")
+                    .setTableId(table.getId())
+                    .build();
 
-                responseObserver.onNext(response);
-                responseObserver.onCompleted();
-            } catch (Exception e) {
-                try {
-                    if (transaction.isActive()) {
-                        transaction.rollback();
-                    }
-                } catch (Exception rollbackEx) {
-                    logger.warn("Error rolling back transaction", rollbackEx);
-                }
-                logger.error("Error creating table", e);
-                responseObserver.onError(e);
-            }
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
         } catch (Exception e) {
-            logger.error("Error creating table - session failure", e);
+            logger.error("Error creating table", e);
             responseObserver.onError(e);
         }
     }
@@ -100,22 +82,22 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
      * uses (table_id, topic_name, partition_number) as the unique key For Iceberg sources: uses
      * (table_id, table_name) as the unique key
      *
-     * @param request The upsert sources request
+     * @param request          The upsert sources request
      * @param responseObserver The observer to send the response to
      */
     @Override
     public void upsertSources(UpsertSourcesRequest request, StreamObserver<UpsertSourcesResponse> responseObserver) {
 
         try (Session session = HibernateSessionManager.getSession()) {
-            Transaction transaction = session.beginTransaction();
-
             if (request.getSourcesList().isEmpty()) {
-                transaction.rollback();
                 responseObserver.onError(new IllegalArgumentException("At least one source must be provided"));
                 return;
             }
 
+            Transaction transaction = null;
             try {
+                transaction = session.beginTransaction();
+
                 for (SourceUpdate sourceUpdate : request.getSourcesList()) {
                     String tableName = sourceUpdate.getTableName();
 
@@ -135,111 +117,13 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     long tableId = table.getId();
 
                     if (sourceUpdate.hasKafkaSource()) {
-                        KafkaSourceMessage kafkaMsg = sourceUpdate.getKafkaSource();
-                        KafkaSourceEntity existing = findKafkaSource(
-                                session, tableId, kafkaMsg.getTopicName(), kafkaMsg.getPartitionNumber());
-
-                        if (existing != null) {
-                            existing.setTrinoCatalogName(kafkaMsg.getTrinoCatalogName());
-                            existing.setTrinoSchemaName(kafkaMsg.getTrinoSchemaName());
-                            existing.setStartOffset(kafkaMsg.getStartOffset());
-                            existing.setEndOffset(kafkaMsg.getEndOffset());
-                            existing.setBrokerUrls(kafkaMsg.getBrokerUrls());
-                            existing.setSchemaType(kafkaMsg.getSchemaType().getNumber());
-                            existing.setSchema(kafkaMsg.getSchema());
-                            session.merge(existing);
-                        } else {
-                            KafkaSourceEntity entity = new KafkaSourceEntity(
-                                    tableId,
-                                    kafkaMsg.getTrinoCatalogName(),
-                                    kafkaMsg.getTrinoSchemaName(),
-                                    kafkaMsg.getStartOffset(),
-                                    kafkaMsg.getEndOffset(),
-                                    kafkaMsg.getPartitionNumber(),
-                                    kafkaMsg.getTopicName(),
-                                    kafkaMsg.getBrokerUrls(),
-                                    kafkaMsg.getSchemaType().getNumber(),
-                                    kafkaMsg.getSchema());
-                            session.persist(entity);
-                        }
+                        upsertKafkaSource(session, tableId, sourceUpdate.getKafkaSource());
                     } else if (sourceUpdate.hasIcebergSource()) {
-                        IcebergSourceMessage icebergMsg = sourceUpdate.getIcebergSource();
-                        IcebergSourceEntity existing = findIcebergSource(session, tableId, icebergMsg.getTableName());
-
-                        if (existing != null) {
-                            existing.setTrinoCatalogName(icebergMsg.getTrinoCatalogName());
-                            existing.setTrinoSchemaName(icebergMsg.getTrinoSchemaName());
-                            existing.setReadTimestamp(icebergMsg.getReadTimestamp());
-                            existing.setSparkCatalogName(icebergMsg.getSparkCatalogName());
-                            existing.setSparkSchemaName(icebergMsg.getSparkSchemaName());
-                            session.merge(existing);
-                        } else {
-                            IcebergSourceEntity entity = new IcebergSourceEntity(
-                                    tableId,
-                                    icebergMsg.getTrinoCatalogName(),
-                                    icebergMsg.getTrinoSchemaName(),
-                                    icebergMsg.getTableName(),
-                                    icebergMsg.getReadTimestamp(),
-                                    icebergMsg.getSparkCatalogName(),
-                                    icebergMsg.getSparkSchemaName());
-                            session.persist(entity);
-                        }
+                        upsertIcebergSource(session, tableId, sourceUpdate.getIcebergSource());
                     } else if (sourceUpdate.hasYugabytedbSource()) {
-                        YugabyteDBSourceMessage yugabyteMsg = sourceUpdate.getYugabytedbSource();
-                        YugabyteSourceEntity existing =
-                                findYugabyteSource(session, tableId, yugabyteMsg.getTableName());
-
-                        if (existing != null) {
-                            existing.setTrinoCatalogName(yugabyteMsg.getTrinoCatalogName());
-                            existing.setTrinoSchemaName(yugabyteMsg.getTrinoSchemaName());
-                            existing.setJdbcUrl(yugabyteMsg.getJdbcUrl());
-                            existing.setUsername(yugabyteMsg.getUsername());
-                            existing.setPassword(yugabyteMsg.getPassword());
-                            existing.setReadTimestamp(yugabyteMsg.getReadTimestamp());
-                            session.merge(existing);
-                        } else {
-                            YugabyteSourceEntity entity = new YugabyteSourceEntity(
-                                    tableId,
-                                    yugabyteMsg.getTrinoCatalogName(),
-                                    yugabyteMsg.getTrinoSchemaName(),
-                                    yugabyteMsg.getTableName(),
-                                    yugabyteMsg.getJdbcUrl(),
-                                    yugabyteMsg.getUsername(),
-                                    yugabyteMsg.getPassword(),
-                                    yugabyteMsg.getReadTimestamp());
-                            session.persist(entity);
-                        }
+                        upsertYugabyteSource(session, tableId, sourceUpdate.getYugabytedbSource());
                     } else if (sourceUpdate.hasPostgresdbSource()) {
-                        PostgresDBSourceMessage postgresMsg = sourceUpdate.getPostgresdbSource();
-                        PostgresSourceEntity existing =
-                                findPostgresSource(session, tableId, postgresMsg.getTableName());
-
-                        if (existing != null) {
-                            existing.setTrinoCatalogName(postgresMsg.getTrinoCatalogName());
-                            existing.setTrinoSchemaName(postgresMsg.getTrinoSchemaName());
-                            existing.setJdbcUrl(postgresMsg.getJdbcUrl());
-                            existing.setUsername(postgresMsg.getUsername());
-                            existing.setPassword(postgresMsg.getPassword());
-                            existing.setReadTimestamp(postgresMsg.getReadTimestamp());
-                            existing.setHistoryTableName(postgresMsg.getHistoryTableName());
-                            existing.setTableNameNoTstzrange(postgresMsg.getTableNameNoTstzrange());
-                            existing.setHistoryTableNameNoTstzrange(postgresMsg.getHistoryTableNameNoTstzrange());
-                            session.merge(existing);
-                        } else {
-                            PostgresSourceEntity entity = new PostgresSourceEntity(
-                                    tableId,
-                                    postgresMsg.getTrinoCatalogName(),
-                                    postgresMsg.getTrinoSchemaName(),
-                                    postgresMsg.getTableName(),
-                                    postgresMsg.getJdbcUrl(),
-                                    postgresMsg.getUsername(),
-                                    postgresMsg.getPassword(),
-                                    postgresMsg.getReadTimestamp(),
-                                    postgresMsg.getHistoryTableName(),
-                                    postgresMsg.getTableNameNoTstzrange(),
-                                    postgresMsg.getHistoryTableNameNoTstzrange());
-                            session.persist(entity);
-                        }
+                        upsertPostgresSource(session, tableId, sourceUpdate.getPostgresdbSource());
                     }
                 }
 
@@ -253,12 +137,8 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
             } catch (Exception e) {
-                try {
-                    if (transaction.isActive()) {
-                        transaction.rollback();
-                    }
-                } catch (Exception rollbackEx) {
-                    logger.warn("Error rolling back transaction", rollbackEx);
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
                 }
                 logger.error("Error upserting sources", e);
                 responseObserver.onError(e);
@@ -272,7 +152,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     /**
      * Loads a table with its schema and sources for a given data harness table name.
      *
-     * @param request The load table request
+     * @param request          The load table request
      * @param responseObserver The observer to send the response to
      */
     @Override
@@ -317,104 +197,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     responseBuilder.setProtobufSchema(table.getProtobufSchema());
                 }
 
-                for (KafkaSourceEntity kafka : kafkaSources) {
-                    KafkaSourceMessage.Builder kafkaMsgBuilder = KafkaSourceMessage.newBuilder()
-                            .setTrinoCatalogName(kafka.getTrinoCatalogName())
-                            .setTrinoSchemaName(kafka.getTrinoSchemaName())
-                            .setStartOffset(kafka.getStartOffset())
-                            .setEndOffset(kafka.getEndOffset())
-                            .setPartitionNumber(kafka.getPartitionNumber())
-                            .setTopicName(kafka.getTopicName());
-
-                    if (kafka.getBrokerUrls() != null && !kafka.getBrokerUrls().isEmpty()) {
-                        kafkaMsgBuilder.setBrokerUrls(kafka.getBrokerUrls());
-                    }
-
-                    if (kafka.getSchemaType() != 0) {
-                        kafkaMsgBuilder.setSchemaType(SchemaType.forNumber(kafka.getSchemaType()));
-                    }
-
-                    if (kafka.getSchema() != null && !kafka.getSchema().isEmpty()) {
-                        kafkaMsgBuilder.setSchema(kafka.getSchema());
-                    }
-
-                    KafkaSourceMessage kafkaMsg = kafkaMsgBuilder.build();
-
-                    TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
-                            .setTableName(tableName)
-                            .setKafkaSource(kafkaMsg)
-                            .build();
-
-                    responseBuilder.addSources(sourceMessage);
-                }
-
-                for (IcebergSourceEntity iceberg : icebergSources) {
-                    IcebergSourceMessage icebergMsg = IcebergSourceMessage.newBuilder()
-                            .setTrinoCatalogName(iceberg.getTrinoCatalogName())
-                            .setTrinoSchemaName(iceberg.getTrinoSchemaName())
-                            .setTableName(iceberg.getTableName())
-                            .setReadTimestamp(iceberg.getReadTimestamp())
-                            .setSparkCatalogName(
-                                    iceberg.getSparkCatalogName() != null ? iceberg.getSparkCatalogName() : "")
-                            .setSparkSchemaName(
-                                    iceberg.getSparkSchemaName() != null ? iceberg.getSparkSchemaName() : "")
-                            .build();
-
-                    TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
-                            .setTableName(tableName)
-                            .setIcebergSource(icebergMsg)
-                            .build();
-
-                    responseBuilder.addSources(sourceMessage);
-                }
-
-                for (YugabyteSourceEntity yugabyte : yugabyteSources) {
-                    YugabyteDBSourceMessage yugabyteMsg = YugabyteDBSourceMessage.newBuilder()
-                            .setTrinoCatalogName(yugabyte.getTrinoCatalogName())
-                            .setTrinoSchemaName(yugabyte.getTrinoSchemaName())
-                            .setTableName(yugabyte.getTableName())
-                            .setJdbcUrl(yugabyte.getJdbcUrl())
-                            .setUsername(yugabyte.getUsername())
-                            .setPassword(yugabyte.getPassword())
-                            .setReadTimestamp(yugabyte.getReadTimestamp())
-                            .build();
-
-                    TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
-                            .setTableName(tableName)
-                            .setYugabytedbSource(yugabyteMsg)
-                            .build();
-
-                    responseBuilder.addSources(sourceMessage);
-                }
-
-                for (PostgresSourceEntity postgres : postgresSources) {
-                    PostgresDBSourceMessage postgresMsg = PostgresDBSourceMessage.newBuilder()
-                            .setTrinoCatalogName(postgres.getTrinoCatalogName())
-                            .setTrinoSchemaName(postgres.getTrinoSchemaName())
-                            .setTableName(postgres.getTableName())
-                            .setJdbcUrl(postgres.getJdbcUrl())
-                            .setUsername(postgres.getUsername())
-                            .setPassword(postgres.getPassword())
-                            .setReadTimestamp(postgres.getReadTimestamp())
-                            .setHistoryTableName(
-                                    postgres.getHistoryTableName() != null ? postgres.getHistoryTableName() : "")
-                            .setTableNameNoTstzrange(
-                                    postgres.getTableNameNoTstzrange() != null
-                                            ? postgres.getTableNameNoTstzrange()
-                                            : "")
-                            .setHistoryTableNameNoTstzrange(
-                                    postgres.getHistoryTableNameNoTstzrange() != null
-                                            ? postgres.getHistoryTableNameNoTstzrange()
-                                            : "")
-                            .build();
-
-                    TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
-                            .setTableName(tableName)
-                            .setPostgresdbSource(postgresMsg)
-                            .build();
-
-                    responseBuilder.addSources(sourceMessage);
-                }
+                addKafkaSourcestoResponse(kafkaSources, tableName, responseBuilder);
+                addIcebergSourcesToResponse(icebergSources, tableName, responseBuilder);
+                addYugabyteSourcesToResponse(yugabyteSources, tableName, responseBuilder);
+                addPostgresSourcesToResponse(postgresSources, tableName, responseBuilder);
 
                 responseObserver.onNext(responseBuilder.build());
                 responseObserver.onCompleted();
@@ -438,7 +224,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     /**
      * Sets the Avro and/or Iceberg schema for a DataHarnessTable.
      *
-     * @param request The set schema request
+     * @param request          The set schema request
      * @param responseObserver The observer to send the response to
      */
     @Override
@@ -498,7 +284,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     /**
      * Lists all tables in the DataHarnessTable catalog.
      *
-     * @param request The list tables request
+     * @param request          The list tables request
      * @param responseObserver The observer to send the response to
      */
     @Override
@@ -522,7 +308,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     /**
      * Checks if a table exists in the DataHarnessTable catalog.
      *
-     * @param request The table exists request
+     * @param request          The table exists request
      * @param responseObserver The observer to send the response to
      */
     @Override
@@ -552,7 +338,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     /**
      * Drops a DataHarnessTable and all of its associated sources.
      *
-     * @param request The drop table request
+     * @param request          The drop table request
      * @param responseObserver The observer to send the response to
      */
     @Override
@@ -578,25 +364,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             try {
                 long tableId = table.getId();
 
-                Query<?> deleteKafkaSources =
-                        session.createQuery("DELETE FROM KafkaSourceEntity WHERE tableId = :tableId");
-                deleteKafkaSources.setParameter("tableId", tableId);
-                deleteKafkaSources.executeUpdate();
-
-                Query<?> deleteIcebergSources =
-                        session.createQuery("DELETE FROM IcebergSourceEntity WHERE tableId = :tableId");
-                deleteIcebergSources.setParameter("tableId", tableId);
-                deleteIcebergSources.executeUpdate();
-
-                Query<?> deleteYugabyteSources =
-                        session.createQuery("DELETE FROM YugabyteSourceEntity WHERE tableId = :tableId");
-                deleteYugabyteSources.setParameter("tableId", tableId);
-                deleteYugabyteSources.executeUpdate();
-
-                Query<?> deletePostgresSources =
-                        session.createQuery("DELETE FROM PostgresSourceEntity WHERE tableId = :tableId");
-                deletePostgresSources.setParameter("tableId", tableId);
-                deletePostgresSources.executeUpdate();
+                deleteSourcesByTableId(session, KafkaSourceEntity.class, tableId);
+                deleteSourcesByTableId(session, IcebergSourceEntity.class, tableId);
+                deleteSourcesByTableId(session, YugabyteSourceEntity.class, tableId);
+                deleteSourcesByTableId(session, PostgresSourceEntity.class, tableId);
 
                 session.remove(table);
 
@@ -634,81 +405,269 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         return query.uniqueResult();
     }
 
-    private KafkaSourceEntity findKafkaSource(Session session, long tableId, String topicName, int partitionNumber) {
-        Query<KafkaSourceEntity> query = session.createQuery(
-                "FROM KafkaSourceEntity WHERE tableId = :tableId AND topicName = :topicName AND partitionNumber = :partitionNumber",
-                KafkaSourceEntity.class);
-        query.setParameter("tableId", tableId);
-        query.setParameter("topicName", topicName);
-        query.setParameter("partitionNumber", partitionNumber);
+    private <T extends SourceEntity> T findSource(Session session, Class<T> sourceClass, long tableId, String name) {
+        String query = "FROM " + sourceClass.getSimpleName() + " WHERE tableId = :tableId AND name = :name";
+        Query<T> hibernateQuery = session.createQuery(query, sourceClass);
+        hibernateQuery.setParameter("tableId", tableId);
+        hibernateQuery.setParameter("name", name);
 
-        return query.uniqueResult();
+        return hibernateQuery.uniqueResult();
     }
 
-    private IcebergSourceEntity findIcebergSource(Session session, long tableId, String tableName) {
-        Query<IcebergSourceEntity> query = session.createQuery(
-                "FROM IcebergSourceEntity WHERE tableId = :tableId AND tableName = :tableName",
-                IcebergSourceEntity.class);
+    private <T extends SourceEntity> List<T> findAllSources(Session session, Class<T> entityClass, long tableId) {
+        Query<T> query =
+                session.createQuery("FROM " + entityClass.getSimpleName() + " WHERE tableId = :tableId", entityClass);
         query.setParameter("tableId", tableId);
-        query.setParameter("tableName", tableName);
 
-        return query.uniqueResult();
-    }
-
-    private YugabyteSourceEntity findYugabyteSource(Session session, long tableId, String tableName) {
-        Query<YugabyteSourceEntity> query = session.createQuery(
-                "FROM YugabyteSourceEntity WHERE tableId = :tableId AND tableName = :tableName",
-                YugabyteSourceEntity.class);
-        query.setParameter("tableId", tableId);
-        query.setParameter("tableName", tableName);
-
-        return query.uniqueResult();
-    }
-
-    private PostgresSourceEntity findPostgresSource(Session session, long tableId, String tableName) {
-        Query<PostgresSourceEntity> query = session.createQuery(
-                "FROM PostgresSourceEntity WHERE tableId = :tableId AND tableName = :tableName",
-                PostgresSourceEntity.class);
-        query.setParameter("tableId", tableId);
-        query.setParameter("tableName", tableName);
-
-        return query.uniqueResult();
+        return query.getResultList();
     }
 
     private List<KafkaSourceEntity> findAllKafkaSources(Session session, long tableId) {
-        Query<KafkaSourceEntity> query =
-                session.createQuery("FROM KafkaSourceEntity WHERE tableId = :tableId", KafkaSourceEntity.class);
-        query.setParameter("tableId", tableId);
-
-        return query.getResultList();
+        return findAllSources(session, KafkaSourceEntity.class, tableId);
     }
 
     private List<IcebergSourceEntity> findAllIcebergSources(Session session, long tableId) {
-        Query<IcebergSourceEntity> query =
-                session.createQuery("FROM IcebergSourceEntity WHERE tableId = :tableId", IcebergSourceEntity.class);
-        query.setParameter("tableId", tableId);
-
-        return query.getResultList();
+        return findAllSources(session, IcebergSourceEntity.class, tableId);
     }
 
     private List<YugabyteSourceEntity> findAllYugabyteSources(Session session, long tableId) {
-        Query<YugabyteSourceEntity> query =
-                session.createQuery("FROM YugabyteSourceEntity WHERE tableId = :tableId", YugabyteSourceEntity.class);
-        query.setParameter("tableId", tableId);
-
-        return query.getResultList();
+        return findAllSources(session, YugabyteSourceEntity.class, tableId);
     }
 
     private List<PostgresSourceEntity> findAllPostgresSources(Session session, long tableId) {
-        Query<PostgresSourceEntity> query =
-                session.createQuery("FROM PostgresSourceEntity WHERE tableId = :tableId", PostgresSourceEntity.class);
-        query.setParameter("tableId", tableId);
-
-        return query.getResultList();
+        return findAllSources(session, PostgresSourceEntity.class, tableId);
     }
 
     private List<DataHarnessTable> findAllTables(Session session) {
         Query<DataHarnessTable> query = session.createQuery("FROM DataHarnessTable", DataHarnessTable.class);
         return query.getResultList();
+    }
+
+    private void upsertKafkaSource(Session session, long tableId, KafkaSourceMessage kafkaMsg) {
+        KafkaSourceEntity existing = findSource(session, KafkaSourceEntity.class, tableId, kafkaMsg.getName());
+
+        if (existing != null) {
+            existing.setTrinoCatalogName(kafkaMsg.getTrinoCatalogName());
+            existing.setTrinoSchemaName(kafkaMsg.getTrinoSchemaName());
+            existing.setStartOffset(kafkaMsg.getStartOffset());
+            existing.setEndOffset(kafkaMsg.getEndOffset());
+            existing.setBrokerUrls(kafkaMsg.getBrokerUrls());
+            existing.setSchemaType(kafkaMsg.getSchemaType().getNumber());
+            existing.setSchema(kafkaMsg.getSchema());
+            session.merge(existing);
+        } else {
+            KafkaSourceEntity entity = new KafkaSourceEntity(
+                    tableId,
+                    kafkaMsg.getName(),
+                    kafkaMsg.getTrinoCatalogName(),
+                    kafkaMsg.getTrinoSchemaName(),
+                    kafkaMsg.getStartOffset(),
+                    kafkaMsg.getEndOffset(),
+                    kafkaMsg.getPartitionNumber(),
+                    kafkaMsg.getTopicName(),
+                    kafkaMsg.getBrokerUrls(),
+                    kafkaMsg.getSchemaType().getNumber(),
+                    kafkaMsg.getSchema());
+            session.persist(entity);
+        }
+    }
+
+    private void upsertIcebergSource(Session session, long tableId, IcebergSourceMessage icebergMsg) {
+        IcebergSourceEntity existing = findSource(session, IcebergSourceEntity.class, tableId, icebergMsg.getName());
+
+        if (existing != null) {
+            existing.setTrinoCatalogName(icebergMsg.getTrinoCatalogName());
+            existing.setTrinoSchemaName(icebergMsg.getTrinoSchemaName());
+            existing.setReadTimestamp(icebergMsg.getReadTimestamp());
+            existing.setSparkCatalogName(icebergMsg.getSparkCatalogName());
+            existing.setSparkSchemaName(icebergMsg.getSparkSchemaName());
+            session.merge(existing);
+        } else {
+            IcebergSourceEntity entity = new IcebergSourceEntity(
+                    tableId,
+                    icebergMsg.getName(),
+                    icebergMsg.getTrinoCatalogName(),
+                    icebergMsg.getTrinoSchemaName(),
+                    icebergMsg.getTableName(),
+                    icebergMsg.getReadTimestamp(),
+                    icebergMsg.getSparkCatalogName(),
+                    icebergMsg.getSparkSchemaName());
+            session.persist(entity);
+        }
+    }
+
+    private void upsertYugabyteSource(Session session, long tableId, YugabyteDBSourceMessage yugabyteMsg) {
+        YugabyteSourceEntity existing = findSource(session, YugabyteSourceEntity.class, tableId, yugabyteMsg.getName());
+
+        if (existing != null) {
+            existing.setTrinoCatalogName(yugabyteMsg.getTrinoCatalogName());
+            existing.setTrinoSchemaName(yugabyteMsg.getTrinoSchemaName());
+            existing.setJdbcUrl(yugabyteMsg.getJdbcUrl());
+            existing.setUsername(yugabyteMsg.getUsername());
+            existing.setPassword(yugabyteMsg.getPassword());
+            existing.setReadTimestamp(yugabyteMsg.getReadTimestamp());
+            session.merge(existing);
+        } else {
+            YugabyteSourceEntity entity = new YugabyteSourceEntity(
+                    tableId,
+                    yugabyteMsg.getName(),
+                    yugabyteMsg.getTrinoCatalogName(),
+                    yugabyteMsg.getTrinoSchemaName(),
+                    yugabyteMsg.getTableName(),
+                    yugabyteMsg.getJdbcUrl(),
+                    yugabyteMsg.getUsername(),
+                    yugabyteMsg.getPassword(),
+                    yugabyteMsg.getReadTimestamp());
+            session.persist(entity);
+        }
+    }
+
+    private void upsertPostgresSource(Session session, long tableId, PostgresDBSourceMessage postgresMsg) {
+        PostgresSourceEntity existing = findSource(session, PostgresSourceEntity.class, tableId, postgresMsg.getName());
+
+        if (existing != null) {
+            existing.setTrinoCatalogName(postgresMsg.getTrinoCatalogName());
+            existing.setTrinoSchemaName(postgresMsg.getTrinoSchemaName());
+            existing.setJdbcUrl(postgresMsg.getJdbcUrl());
+            existing.setUsername(postgresMsg.getUsername());
+            existing.setPassword(postgresMsg.getPassword());
+            existing.setReadTimestamp(postgresMsg.getReadTimestamp());
+            existing.setHistoryTableName(postgresMsg.getHistoryTableName());
+            existing.setTableNameNoTstzrange(postgresMsg.getTableNameNoTstzrange());
+            existing.setHistoryTableNameNoTstzrange(postgresMsg.getHistoryTableNameNoTstzrange());
+            session.merge(existing);
+        } else {
+            PostgresSourceEntity entity = new PostgresSourceEntity(
+                    tableId,
+                    postgresMsg.getName(),
+                    postgresMsg.getTrinoCatalogName(),
+                    postgresMsg.getTrinoSchemaName(),
+                    postgresMsg.getTableName(),
+                    postgresMsg.getJdbcUrl(),
+                    postgresMsg.getUsername(),
+                    postgresMsg.getPassword(),
+                    postgresMsg.getReadTimestamp(),
+                    postgresMsg.getHistoryTableName(),
+                    postgresMsg.getTableNameNoTstzrange(),
+                    postgresMsg.getHistoryTableNameNoTstzrange());
+            session.persist(entity);
+        }
+    }
+
+    private <T extends SourceEntity> void deleteSourcesByTableId(Session session, Class<T> entityClass, long tableId) {
+        Query<?> query =
+                session.createQuery("DELETE FROM " + entityClass.getSimpleName() + " WHERE tableId = :tableId");
+        query.setParameter("tableId", tableId);
+        query.executeUpdate();
+    }
+
+    private void addKafkaSourcestoResponse(
+            List<KafkaSourceEntity> kafkaSources, String tableName, LoadTableResponse.Builder responseBuilder) {
+        for (KafkaSourceEntity kafka : kafkaSources) {
+            KafkaSourceMessage.Builder kafkaMsgBuilder = KafkaSourceMessage.newBuilder()
+                    .setName(kafka.getName())
+                    .setTrinoCatalogName(kafka.getTrinoCatalogName())
+                    .setTrinoSchemaName(kafka.getTrinoSchemaName())
+                    .setStartOffset(kafka.getStartOffset())
+                    .setEndOffset(kafka.getEndOffset())
+                    .setPartitionNumber(kafka.getPartitionNumber())
+                    .setTopicName(kafka.getTopicName());
+
+            if (kafka.getBrokerUrls() != null && !kafka.getBrokerUrls().isEmpty()) {
+                kafkaMsgBuilder.setBrokerUrls(kafka.getBrokerUrls());
+            }
+
+            if (kafka.getSchemaType() != 0) {
+                kafkaMsgBuilder.setSchemaType(SchemaType.forNumber(kafka.getSchemaType()));
+            }
+
+            if (kafka.getSchema() != null && !kafka.getSchema().isEmpty()) {
+                kafkaMsgBuilder.setSchema(kafka.getSchema());
+            }
+
+            KafkaSourceMessage kafkaMsg = kafkaMsgBuilder.build();
+
+            TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
+                    .setTableName(tableName)
+                    .setKafkaSource(kafkaMsg)
+                    .build();
+
+            responseBuilder.addSources(sourceMessage);
+        }
+    }
+
+    private void addIcebergSourcesToResponse(
+            List<IcebergSourceEntity> icebergSources, String tableName, LoadTableResponse.Builder responseBuilder) {
+        for (IcebergSourceEntity iceberg : icebergSources) {
+            IcebergSourceMessage icebergMsg = IcebergSourceMessage.newBuilder()
+                    .setName(iceberg.getName())
+                    .setTrinoCatalogName(iceberg.getTrinoCatalogName())
+                    .setTrinoSchemaName(iceberg.getTrinoSchemaName())
+                    .setTableName(iceberg.getTableName())
+                    .setReadTimestamp(iceberg.getReadTimestamp())
+                    .setSparkCatalogName(iceberg.getSparkCatalogName() != null ? iceberg.getSparkCatalogName() : "")
+                    .setSparkSchemaName(iceberg.getSparkSchemaName() != null ? iceberg.getSparkSchemaName() : "")
+                    .build();
+
+            TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
+                    .setTableName(tableName)
+                    .setIcebergSource(icebergMsg)
+                    .build();
+
+            responseBuilder.addSources(sourceMessage);
+        }
+    }
+
+    private void addYugabyteSourcesToResponse(
+            List<YugabyteSourceEntity> yugabyteSources, String tableName, LoadTableResponse.Builder responseBuilder) {
+        for (YugabyteSourceEntity yugabyte : yugabyteSources) {
+            YugabyteDBSourceMessage yugabyteMsg = YugabyteDBSourceMessage.newBuilder()
+                    .setName(yugabyte.getName())
+                    .setTrinoCatalogName(yugabyte.getTrinoCatalogName())
+                    .setTrinoSchemaName(yugabyte.getTrinoSchemaName())
+                    .setTableName(yugabyte.getTableName())
+                    .setJdbcUrl(yugabyte.getJdbcUrl())
+                    .setUsername(yugabyte.getUsername())
+                    .setPassword(yugabyte.getPassword())
+                    .setReadTimestamp(yugabyte.getReadTimestamp())
+                    .build();
+
+            TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
+                    .setTableName(tableName)
+                    .setYugabytedbSource(yugabyteMsg)
+                    .build();
+
+            responseBuilder.addSources(sourceMessage);
+        }
+    }
+
+    private void addPostgresSourcesToResponse(
+            List<PostgresSourceEntity> postgresSources, String tableName, LoadTableResponse.Builder responseBuilder) {
+        for (PostgresSourceEntity postgres : postgresSources) {
+            PostgresDBSourceMessage postgresMsg = PostgresDBSourceMessage.newBuilder()
+                    .setName(postgres.getName())
+                    .setTrinoCatalogName(postgres.getTrinoCatalogName())
+                    .setTrinoSchemaName(postgres.getTrinoSchemaName())
+                    .setTableName(postgres.getTableName())
+                    .setJdbcUrl(postgres.getJdbcUrl())
+                    .setUsername(postgres.getUsername())
+                    .setPassword(postgres.getPassword())
+                    .setReadTimestamp(postgres.getReadTimestamp())
+                    .setHistoryTableName(postgres.getHistoryTableName() != null ? postgres.getHistoryTableName() : "")
+                    .setTableNameNoTstzrange(
+                            postgres.getTableNameNoTstzrange() != null ? postgres.getTableNameNoTstzrange() : "")
+                    .setHistoryTableNameNoTstzrange(
+                            postgres.getHistoryTableNameNoTstzrange() != null
+                                    ? postgres.getHistoryTableNameNoTstzrange()
+                                    : "")
+                    .build();
+
+            TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
+                    .setTableName(tableName)
+                    .setPostgresdbSource(postgresMsg)
+                    .build();
+
+            responseBuilder.addSources(sourceMessage);
+        }
     }
 }

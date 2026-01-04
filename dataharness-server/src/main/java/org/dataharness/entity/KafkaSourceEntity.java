@@ -46,13 +46,16 @@ import jakarta.persistence.UniqueConstraint;
                     name = "uk_kafka_sources_table_id_topic_partition",
                     columnNames = {"table_id", "topic_name", "partition_number"})
         })
-public class KafkaSourceEntity {
+public class KafkaSourceEntity implements SourceEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @Column(name = "table_id", nullable = false)
     private long tableId;
+
+    @Column(name = "name", nullable = false)
+    private String name;
 
     @Column(name = "trino_catalog_name", nullable = false)
     private String trinoCatalogName;
@@ -85,6 +88,7 @@ public class KafkaSourceEntity {
 
     public KafkaSourceEntity(
             long tableId,
+            String name,
             String trinoCatalogName,
             String trinoSchemaName,
             long startOffset,
@@ -92,6 +96,7 @@ public class KafkaSourceEntity {
             int partitionNumber,
             String topicName) {
         this.tableId = tableId;
+        this.name = name;
         this.trinoCatalogName = trinoCatalogName;
         this.trinoSchemaName = trinoSchemaName;
         this.startOffset = startOffset;
@@ -102,6 +107,7 @@ public class KafkaSourceEntity {
 
     public KafkaSourceEntity(
             long tableId,
+            String name,
             String trinoCatalogName,
             String trinoSchemaName,
             long startOffset,
@@ -112,6 +118,7 @@ public class KafkaSourceEntity {
             int schemaType,
             String schema) {
         this.tableId = tableId;
+        this.name = name;
         this.trinoCatalogName = trinoCatalogName;
         this.trinoSchemaName = trinoSchemaName;
         this.startOffset = startOffset;
@@ -137,6 +144,14 @@ public class KafkaSourceEntity {
 
     public void setTableId(long tableId) {
         this.tableId = tableId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getTrinoCatalogName() {

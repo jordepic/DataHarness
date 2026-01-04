@@ -43,13 +43,16 @@ import jakarta.persistence.UniqueConstraint;
                     name = "uk_iceberg_sources_table_id_table_name",
                     columnNames = {"table_id", "table_name"})
         })
-public class IcebergSourceEntity {
+public class IcebergSourceEntity implements SourceEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @Column(name = "table_id", nullable = false)
     private long tableId;
+
+    @Column(name = "name", nullable = false)
+    private String name;
 
     @Column(name = "trino_catalog_name", nullable = false)
     private String trinoCatalogName;
@@ -72,8 +75,14 @@ public class IcebergSourceEntity {
     public IcebergSourceEntity() {}
 
     public IcebergSourceEntity(
-            long tableId, String trinoCatalogName, String trinoSchemaName, String tableName, long readTimestamp) {
+            long tableId,
+            String name,
+            String trinoCatalogName,
+            String trinoSchemaName,
+            String tableName,
+            long readTimestamp) {
         this.tableId = tableId;
+        this.name = name;
         this.trinoCatalogName = trinoCatalogName;
         this.trinoSchemaName = trinoSchemaName;
         this.tableName = tableName;
@@ -82,6 +91,7 @@ public class IcebergSourceEntity {
 
     public IcebergSourceEntity(
             long tableId,
+            String name,
             String trinoCatalogName,
             String trinoSchemaName,
             String tableName,
@@ -89,6 +99,7 @@ public class IcebergSourceEntity {
             String sparkCatalogName,
             String sparkSchemaName) {
         this.tableId = tableId;
+        this.name = name;
         this.trinoCatalogName = trinoCatalogName;
         this.trinoSchemaName = trinoSchemaName;
         this.tableName = tableName;
@@ -111,6 +122,14 @@ public class IcebergSourceEntity {
 
     public void setTableId(long tableId) {
         this.tableId = tableId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getTrinoCatalogName() {

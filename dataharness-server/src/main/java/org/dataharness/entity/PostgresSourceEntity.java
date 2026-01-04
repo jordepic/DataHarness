@@ -46,13 +46,16 @@ import jakarta.persistence.UniqueConstraint;
                     name = "uk_postgres_sources_table_id_table_name",
                     columnNames = {"table_id", "table_name"})
         })
-public class PostgresSourceEntity {
+public class PostgresSourceEntity implements SourceEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @Column(name = "table_id", nullable = false)
     private long tableId;
+
+    @Column(name = "name", nullable = false)
+    private String name;
 
     @Column(name = "trino_catalog_name", nullable = false)
     private String trinoCatalogName;
@@ -88,6 +91,7 @@ public class PostgresSourceEntity {
 
     public PostgresSourceEntity(
             long tableId,
+            String name,
             String trinoCatalogName,
             String trinoSchemaName,
             String tableName,
@@ -99,6 +103,7 @@ public class PostgresSourceEntity {
             String tableNameNoTstzrange,
             String historyTableNameNoTstzrange) {
         this.tableId = tableId;
+        this.name = name;
         this.trinoCatalogName = trinoCatalogName;
         this.trinoSchemaName = trinoSchemaName;
         this.tableName = tableName;
@@ -125,6 +130,14 @@ public class PostgresSourceEntity {
 
     public void setTableId(long tableId) {
         this.tableId = tableId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getTrinoCatalogName() {
