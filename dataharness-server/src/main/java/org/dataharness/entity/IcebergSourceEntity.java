@@ -72,6 +72,9 @@ public class IcebergSourceEntity implements SourceEntity {
     @Column(name = "spark_schema_name")
     private String sparkSchemaName;
 
+    @Column(name = "modifier", nullable = false)
+    private String modifier = "";
+
     public IcebergSourceEntity() {}
 
     public IcebergSourceEntity(
@@ -178,5 +181,13 @@ public class IcebergSourceEntity implements SourceEntity {
 
     public void setSparkSchemaName(String sparkSchemaName) {
         this.sparkSchemaName = sparkSchemaName;
+    }
+
+    public String getModifier() {
+        return modifier;
+    }
+
+    public void setModifier(String modifier) {
+        this.modifier = modifier;
     }
 }

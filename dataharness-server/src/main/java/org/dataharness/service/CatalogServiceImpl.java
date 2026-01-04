@@ -24,6 +24,7 @@
 package org.dataharness.service;
 
 import io.grpc.stub.StreamObserver;
+import java.util.ArrayList;
 import java.util.List;
 import org.dataharness.db.HibernateSessionManager;
 import org.dataharness.entity.*;
@@ -80,7 +81,8 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     /**
      * Upserts multiple Kafka and/or Iceberg sources into the database atomically. For Kafka sources:
      * uses (table_id, topic_name, partition_number) as the unique key For Iceberg sources: uses
-     * (table_id, table_name) as the unique key
+     * (table_id, table_name) as the unique key. All modifier fields must match the source's current
+     * modifier. After successful update, the modifier is reset to empty string.
      *
      * @param request          The upsert sources request
      * @param responseObserver The observer to send the response to
@@ -97,6 +99,8 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             Transaction transaction = null;
             try {
                 transaction = session.beginTransaction();
+
+                List<SourceEntity> sourcesToUpdate = new ArrayList<>();
 
                 for (SourceUpdate sourceUpdate : request.getSourcesList()) {
                     String tableName = sourceUpdate.getTableName();
@@ -117,14 +121,47 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     long tableId = table.getId();
 
                     if (sourceUpdate.hasKafkaSource()) {
-                        upsertKafkaSource(session, tableId, sourceUpdate.getKafkaSource());
+                        KafkaSourceMessage kafkaMsg = sourceUpdate.getKafkaSource();
+                        validateSourceModifier(
+                                session, KafkaSourceEntity.class, tableId, kafkaMsg.getName(), kafkaMsg.getModifier());
+                        SourceEntity source = upsertKafkaSourceAndReturn(session, tableId, kafkaMsg);
+                        sourcesToUpdate.add(source);
                     } else if (sourceUpdate.hasIcebergSource()) {
-                        upsertIcebergSource(session, tableId, sourceUpdate.getIcebergSource());
+                        IcebergSourceMessage icebergMsg = sourceUpdate.getIcebergSource();
+                        validateSourceModifier(
+                                session,
+                                IcebergSourceEntity.class,
+                                tableId,
+                                icebergMsg.getName(),
+                                icebergMsg.getModifier());
+                        SourceEntity source = upsertIcebergSourceAndReturn(session, tableId, icebergMsg);
+                        sourcesToUpdate.add(source);
                     } else if (sourceUpdate.hasYugabytedbSource()) {
-                        upsertYugabyteSource(session, tableId, sourceUpdate.getYugabytedbSource());
+                        YugabyteDBSourceMessage yugabyteMsg = sourceUpdate.getYugabytedbSource();
+                        validateSourceModifier(
+                                session,
+                                YugabyteSourceEntity.class,
+                                tableId,
+                                yugabyteMsg.getName(),
+                                yugabyteMsg.getModifier());
+                        SourceEntity source = upsertYugabyteSourceAndReturn(session, tableId, yugabyteMsg);
+                        sourcesToUpdate.add(source);
                     } else if (sourceUpdate.hasPostgresdbSource()) {
-                        upsertPostgresSource(session, tableId, sourceUpdate.getPostgresdbSource());
+                        PostgresDBSourceMessage postgresMsg = sourceUpdate.getPostgresdbSource();
+                        validateSourceModifier(
+                                session,
+                                PostgresSourceEntity.class,
+                                tableId,
+                                postgresMsg.getName(),
+                                postgresMsg.getModifier());
+                        SourceEntity source = upsertPostgresSourceAndReturn(session, tableId, postgresMsg);
+                        sourcesToUpdate.add(source);
                     }
+                }
+
+                for (SourceEntity source : sourcesToUpdate) {
+                    source.setModifier("");
+                    session.merge(source);
                 }
 
                 transaction.commit();
@@ -336,6 +373,97 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     }
 
     /**
+     * Claims (locks) multiple sources by setting their modifier field. Only succeeds if all sources
+     * currently have an empty modifier field. The operation is atomic - either all sources are
+     * claimed or none are.
+     *
+     * @param request          The claim sources request
+     * @param responseObserver The observer to send the response to
+     */
+    @Override
+    public void claimSources(ClaimSourcesRequest request, StreamObserver<ClaimSourcesResponse> responseObserver) {
+        try (Session session = HibernateSessionManager.getSession()) {
+            if (request.getSourcesList().isEmpty()) {
+                responseObserver.onError(new IllegalArgumentException("At least one source must be provided"));
+                return;
+            }
+
+            Transaction transaction = null;
+            try {
+                transaction = session.beginTransaction();
+
+                for (SourceToClaim sourceInfo : request.getSourcesList()) {
+                    String sourceName = sourceInfo.getName();
+                    String modifier = sourceInfo.getModifier();
+
+                    if (sourceName.isEmpty()) {
+                        transaction.rollback();
+                        responseObserver.onError(new IllegalArgumentException("Source name cannot be empty"));
+                        return;
+                    }
+
+                    if (modifier.isEmpty()) {
+                        transaction.rollback();
+                        responseObserver.onError(new IllegalArgumentException("Modifier cannot be empty"));
+                        return;
+                    }
+
+                    SourceEntity source = findSourceByName(session, sourceName);
+                    if (source == null) {
+                        transaction.rollback();
+                        ClaimSourcesResponse response = ClaimSourcesResponse.newBuilder()
+                                .setSuccess(false)
+                                .setMessage("Source not found: " + sourceName)
+                                .build();
+                        responseObserver.onNext(response);
+                        responseObserver.onCompleted();
+                        return;
+                    }
+
+                    if (!source.getModifier().isEmpty()) {
+                        transaction.rollback();
+                        ClaimSourcesResponse response = ClaimSourcesResponse.newBuilder()
+                                .setSuccess(false)
+                                .setMessage("Source is already locked: " + sourceName)
+                                .build();
+                        responseObserver.onNext(response);
+                        responseObserver.onCompleted();
+                        return;
+                    }
+                }
+
+                for (SourceToClaim sourceInfo : request.getSourcesList()) {
+                    String sourceName = sourceInfo.getName();
+                    String modifier = sourceInfo.getModifier();
+
+                    SourceEntity source = findSourceByName(session, sourceName);
+                    source.setModifier(modifier);
+                    session.merge(source);
+                }
+
+                transaction.commit();
+
+                ClaimSourcesResponse response = ClaimSourcesResponse.newBuilder()
+                        .setSuccess(true)
+                        .setMessage("Sources claimed successfully")
+                        .build();
+
+                responseObserver.onNext(response);
+                responseObserver.onCompleted();
+            } catch (Exception e) {
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
+                }
+                logger.error("Error claiming sources", e);
+                responseObserver.onError(e);
+            }
+        } catch (Exception e) {
+            logger.error("Error claiming sources - session failure", e);
+            responseObserver.onError(e);
+        }
+    }
+
+    /**
      * Drops a DataHarnessTable and all of its associated sources.
      *
      * @param request          The drop table request
@@ -405,6 +533,28 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         return query.uniqueResult();
     }
 
+    private SourceEntity findSourceByName(Session session, String name) {
+        SourceEntity source = findSourceByNameAndType(session, KafkaSourceEntity.class, name);
+        if (source != null) return source;
+
+        source = findSourceByNameAndType(session, IcebergSourceEntity.class, name);
+        if (source != null) return source;
+
+        source = findSourceByNameAndType(session, YugabyteSourceEntity.class, name);
+        if (source != null) return source;
+
+        source = findSourceByNameAndType(session, PostgresSourceEntity.class, name);
+        return source;
+    }
+
+    private <T extends SourceEntity> T findSourceByNameAndType(Session session, Class<T> sourceClass, String name) {
+        String query = "FROM " + sourceClass.getSimpleName() + " WHERE name = :name";
+        Query<T> hibernateQuery = session.createQuery(query, sourceClass);
+        hibernateQuery.setParameter("name", name);
+
+        return hibernateQuery.uniqueResult();
+    }
+
     private <T extends SourceEntity> T findSource(Session session, Class<T> sourceClass, long tableId, String name) {
         String query = "FROM " + sourceClass.getSimpleName() + " WHERE tableId = :tableId AND name = :name";
         Query<T> hibernateQuery = session.createQuery(query, sourceClass);
@@ -412,6 +562,14 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         hibernateQuery.setParameter("name", name);
 
         return hibernateQuery.uniqueResult();
+    }
+
+    private <T extends SourceEntity> void validateSourceModifier(
+            Session session, Class<T> sourceClass, long tableId, String sourceName, String expectedModifier) {
+        T existing = findSource(session, sourceClass, tableId, sourceName);
+        if (existing != null && !existing.getModifier().equals(expectedModifier)) {
+            throw new IllegalArgumentException("Modifier mismatch for source: " + sourceName);
+        }
     }
 
     private <T extends SourceEntity> List<T> findAllSources(Session session, Class<T> entityClass, long tableId) {
@@ -444,6 +602,10 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
     }
 
     private void upsertKafkaSource(Session session, long tableId, KafkaSourceMessage kafkaMsg) {
+        upsertKafkaSourceAndReturn(session, tableId, kafkaMsg);
+    }
+
+    private KafkaSourceEntity upsertKafkaSourceAndReturn(Session session, long tableId, KafkaSourceMessage kafkaMsg) {
         KafkaSourceEntity existing = findSource(session, KafkaSourceEntity.class, tableId, kafkaMsg.getName());
 
         if (existing != null) {
@@ -455,6 +617,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setSchemaType(kafkaMsg.getSchemaType().getNumber());
             existing.setSchema(kafkaMsg.getSchema());
             session.merge(existing);
+            return existing;
         } else {
             KafkaSourceEntity entity = new KafkaSourceEntity(
                     tableId,
@@ -469,10 +632,16 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     kafkaMsg.getSchemaType().getNumber(),
                     kafkaMsg.getSchema());
             session.persist(entity);
+            return entity;
         }
     }
 
     private void upsertIcebergSource(Session session, long tableId, IcebergSourceMessage icebergMsg) {
+        upsertIcebergSourceAndReturn(session, tableId, icebergMsg);
+    }
+
+    private IcebergSourceEntity upsertIcebergSourceAndReturn(
+            Session session, long tableId, IcebergSourceMessage icebergMsg) {
         IcebergSourceEntity existing = findSource(session, IcebergSourceEntity.class, tableId, icebergMsg.getName());
 
         if (existing != null) {
@@ -482,6 +651,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setSparkCatalogName(icebergMsg.getSparkCatalogName());
             existing.setSparkSchemaName(icebergMsg.getSparkSchemaName());
             session.merge(existing);
+            return existing;
         } else {
             IcebergSourceEntity entity = new IcebergSourceEntity(
                     tableId,
@@ -493,10 +663,16 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     icebergMsg.getSparkCatalogName(),
                     icebergMsg.getSparkSchemaName());
             session.persist(entity);
+            return entity;
         }
     }
 
     private void upsertYugabyteSource(Session session, long tableId, YugabyteDBSourceMessage yugabyteMsg) {
+        upsertYugabyteSourceAndReturn(session, tableId, yugabyteMsg);
+    }
+
+    private YugabyteSourceEntity upsertYugabyteSourceAndReturn(
+            Session session, long tableId, YugabyteDBSourceMessage yugabyteMsg) {
         YugabyteSourceEntity existing = findSource(session, YugabyteSourceEntity.class, tableId, yugabyteMsg.getName());
 
         if (existing != null) {
@@ -507,6 +683,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setPassword(yugabyteMsg.getPassword());
             existing.setReadTimestamp(yugabyteMsg.getReadTimestamp());
             session.merge(existing);
+            return existing;
         } else {
             YugabyteSourceEntity entity = new YugabyteSourceEntity(
                     tableId,
@@ -519,10 +696,16 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     yugabyteMsg.getPassword(),
                     yugabyteMsg.getReadTimestamp());
             session.persist(entity);
+            return entity;
         }
     }
 
     private void upsertPostgresSource(Session session, long tableId, PostgresDBSourceMessage postgresMsg) {
+        upsertPostgresSourceAndReturn(session, tableId, postgresMsg);
+    }
+
+    private PostgresSourceEntity upsertPostgresSourceAndReturn(
+            Session session, long tableId, PostgresDBSourceMessage postgresMsg) {
         PostgresSourceEntity existing = findSource(session, PostgresSourceEntity.class, tableId, postgresMsg.getName());
 
         if (existing != null) {
@@ -536,6 +719,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setTableNameNoTstzrange(postgresMsg.getTableNameNoTstzrange());
             existing.setHistoryTableNameNoTstzrange(postgresMsg.getHistoryTableNameNoTstzrange());
             session.merge(existing);
+            return existing;
         } else {
             PostgresSourceEntity entity = new PostgresSourceEntity(
                     tableId,
@@ -551,6 +735,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     postgresMsg.getTableNameNoTstzrange(),
                     postgresMsg.getHistoryTableNameNoTstzrange());
             session.persist(entity);
+            return entity;
         }
     }
 
@@ -571,7 +756,8 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     .setStartOffset(kafka.getStartOffset())
                     .setEndOffset(kafka.getEndOffset())
                     .setPartitionNumber(kafka.getPartitionNumber())
-                    .setTopicName(kafka.getTopicName());
+                    .setTopicName(kafka.getTopicName())
+                    .setModifier(kafka.getModifier());
 
             if (kafka.getBrokerUrls() != null && !kafka.getBrokerUrls().isEmpty()) {
                 kafkaMsgBuilder.setBrokerUrls(kafka.getBrokerUrls());
@@ -607,6 +793,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     .setReadTimestamp(iceberg.getReadTimestamp())
                     .setSparkCatalogName(iceberg.getSparkCatalogName() != null ? iceberg.getSparkCatalogName() : "")
                     .setSparkSchemaName(iceberg.getSparkSchemaName() != null ? iceberg.getSparkSchemaName() : "")
+                    .setModifier(iceberg.getModifier())
                     .build();
 
             TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
@@ -630,6 +817,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     .setUsername(yugabyte.getUsername())
                     .setPassword(yugabyte.getPassword())
                     .setReadTimestamp(yugabyte.getReadTimestamp())
+                    .setModifier(yugabyte.getModifier())
                     .build();
 
             TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
@@ -660,6 +848,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                             postgres.getHistoryTableNameNoTstzrange() != null
                                     ? postgres.getHistoryTableNameNoTstzrange()
                                     : "")
+                    .setModifier(postgres.getModifier())
                     .build();
 
             TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()

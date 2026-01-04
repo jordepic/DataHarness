@@ -20,6 +20,7 @@ service CatalogService {
   rpc SetSchema(SetSchemaRequest) returns (SetSchemaResponse) {}
   rpc DropTable(DropTableRequest) returns (DropTableResponse) {}
   rpc TableExists(TableExistsRequest) returns (TableExistsResponse) {}
+  rpc ClaimSources(ClaimSourcesRequest) returns (ClaimSourcesResponse) {}
 }
 
 message CreateTableRequest {
@@ -73,6 +74,7 @@ message KafkaSourceMessage {
   string broker_urls = 8;
   SchemaType schema_type = 9;
   string schema = 10;
+  string modifier = 11;
 }
 
 message IcebergSourceMessage {
@@ -83,6 +85,7 @@ message IcebergSourceMessage {
   int64 read_timestamp = 5;
   string spark_catalog_name = 6;
   string spark_schema_name = 7;
+  string modifier = 8;
 }
 
 message YugabyteDBSourceMessage {
@@ -94,6 +97,7 @@ message YugabyteDBSourceMessage {
   string username = 6;
   string password = 7;
   int64 read_timestamp = 8;
+  string modifier = 9;
 }
 
 message PostgresDBSourceMessage {
@@ -108,6 +112,7 @@ message PostgresDBSourceMessage {
   string history_table_name = 9;
   string table_name_no_tstzrange = 10;
   string history_table_name_no_tstzrange = 11;
+  string modifier = 12;
 }
 
 message TableSourceMessage {
@@ -154,4 +159,18 @@ message TableExistsRequest {
 
 message TableExistsResponse {
   bool exists = 1;
+}
+
+message SourceToClaim {
+  string name = 1;
+  string modifier = 2;
+}
+
+message ClaimSourcesRequest {
+  repeated SourceToClaim sources = 1;
+}
+
+message ClaimSourcesResponse {
+  bool success = 1;
+  string message = 2;
 }

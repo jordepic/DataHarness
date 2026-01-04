@@ -979,4 +979,330 @@ public class CatalogServiceIntegrationTest {
 
         assertThat(response.getExists()).isFalse();
     }
+
+    @Test
+    public void testClaimSourcesSuccessfully() {
+        String tableName = "test responsetable responselock";
+        CreateTableRequest tableRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+        stub.createTable(tableRequest);
+
+        KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog")
+                .setTrinoSchemaName("schema")
+                .setStartOffset(0)
+                .setEndOffset(100)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-1")
+                .build();
+
+        SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSource)
+                .build();
+        UpsertSourcesRequest upsertRequest =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+        stub.upsertSources(upsertRequest);
+
+        ClaimSourcesRequest claimRequest = ClaimSourcesRequest.newBuilder()
+                .addSources(SourceToClaim.newBuilder()
+                        .setName("kafka-source-1")
+                        .setModifier("lock1")
+                        .build())
+                .build();
+
+        ClaimSourcesResponse response = stub.claimSources(claimRequest);
+
+        assertThat(response.getSuccess()).isTrue();
+        assertThat(response.getMessage()).isEqualTo("Sources claimed successfully");
+    }
+
+    @Test
+    public void testClaimSourcesAlreadyLocked() {
+        String tableName = "test responsetable responselocktwice";
+        CreateTableRequest tableRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+        stub.createTable(tableRequest);
+
+        KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog")
+                .setTrinoSchemaName("schema")
+                .setStartOffset(0)
+                .setEndOffset(100)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-2")
+                .build();
+
+        SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSource)
+                .build();
+        UpsertSourcesRequest upsertRequest =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+        stub.upsertSources(upsertRequest);
+
+        ClaimSourcesRequest claimRequest1 = ClaimSourcesRequest.newBuilder()
+                .addSources(SourceToClaim.newBuilder()
+                        .setName("kafka-source-2")
+                        .setModifier("lock1")
+                        .build())
+                .build();
+        stub.claimSources(claimRequest1);
+
+        ClaimSourcesRequest claimRequest2 = ClaimSourcesRequest.newBuilder()
+                .addSources(SourceToClaim.newBuilder()
+                        .setName("kafka-source-2")
+                        .setModifier("lock2")
+                        .build())
+                .build();
+        ClaimSourcesResponse response = stub.claimSources(claimRequest2);
+
+        assertThat(response.getSuccess()).isFalse();
+        assertThat(response.getMessage()).contains("already locked");
+    }
+
+    @Test
+    public void testClaimSourcesNotFound() {
+        ClaimSourcesRequest claimRequest = ClaimSourcesRequest.newBuilder()
+                .addSources(SourceToClaim.newBuilder()
+                        .setName("nonexistent-source")
+                        .setModifier("lock1")
+                        .build())
+                .build();
+
+        ClaimSourcesResponse response = stub.claimSources(claimRequest);
+
+        assertThat(response.getSuccess()).isFalse();
+        assertThat(response.getMessage()).contains("Source not found");
+    }
+
+    @Test
+    public void testUpsertSourcesWithModifierValidation() {
+        String tableName = "test responsetable responsemodifier";
+        CreateTableRequest tableRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+        stub.createTable(tableRequest);
+
+        KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog")
+                .setTrinoSchemaName("schema")
+                .setStartOffset(0)
+                .setEndOffset(100)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-3")
+                .setModifier("")
+                .build();
+
+        SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSource)
+                .build();
+        UpsertSourcesRequest upsertRequest =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+        UpsertSourcesResponse response = stub.upsertSources(upsertRequest);
+
+        assertThat(response.getSuccess()).isTrue();
+
+        ClaimSourcesRequest claimRequest = ClaimSourcesRequest.newBuilder()
+                .addSources(SourceToClaim.newBuilder()
+                        .setName("kafka-source-3")
+                        .setModifier("lock1")
+                        .build())
+                .build();
+        stub.claimSources(claimRequest);
+
+        KafkaSourceMessage kafkaSourceUpdate = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog-updated")
+                .setTrinoSchemaName("schema-updated")
+                .setStartOffset(100)
+                .setEndOffset(200)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-3")
+                .setModifier("lock1")
+                .build();
+
+        SourceUpdate sourceUpdateWithModifier = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSourceUpdate)
+                .build();
+        UpsertSourcesRequest upsertRequestWithModifier = UpsertSourcesRequest.newBuilder()
+                .addSources(sourceUpdateWithModifier)
+                .build();
+        UpsertSourcesResponse updateResponse = stub.upsertSources(upsertRequestWithModifier);
+
+        assertThat(updateResponse.getSuccess()).isTrue();
+    }
+
+    @Test
+    public void testUpsertSourcesWithIncorrectModifier() {
+        String tableName = "test responsetable responsemodifiermismatch";
+        CreateTableRequest tableRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+        stub.createTable(tableRequest);
+
+        KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog")
+                .setTrinoSchemaName("schema")
+                .setStartOffset(0)
+                .setEndOffset(100)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-4")
+                .setModifier("")
+                .build();
+
+        SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSource)
+                .build();
+        UpsertSourcesRequest upsertRequest =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+        stub.upsertSources(upsertRequest);
+
+        ClaimSourcesRequest claimRequest = ClaimSourcesRequest.newBuilder()
+                .addSources(SourceToClaim.newBuilder()
+                        .setName("kafka-source-4")
+                        .setModifier("lock1")
+                        .build())
+                .build();
+        stub.claimSources(claimRequest);
+
+        KafkaSourceMessage kafkaSourceUpdateWrongModifier = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog-updated")
+                .setTrinoSchemaName("schema-updated")
+                .setStartOffset(100)
+                .setEndOffset(200)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-4")
+                .setModifier("wrong-lock")
+                .build();
+
+        SourceUpdate sourceUpdateWithWrongModifier = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSourceUpdateWrongModifier)
+                .build();
+        UpsertSourcesRequest upsertRequestWithWrongModifier = UpsertSourcesRequest.newBuilder()
+                .addSources(sourceUpdateWithWrongModifier)
+                .build();
+
+        assertThatThrownBy(() -> stub.upsertSources(upsertRequestWithWrongModifier))
+                .isInstanceOf(StatusRuntimeException.class);
+    }
+
+    @Test
+    public void testModifierResetAfterSuccessfulUpdate() {
+        String tableName = "test responsetable responsemodifierreset";
+        CreateTableRequest tableRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+        stub.createTable(tableRequest);
+
+        KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog")
+                .setTrinoSchemaName("schema")
+                .setStartOffset(0)
+                .setEndOffset(100)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-5")
+                .setModifier("")
+                .build();
+
+        SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSource)
+                .build();
+        UpsertSourcesRequest upsertRequest =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+        stub.upsertSources(upsertRequest);
+
+        ClaimSourcesRequest claimRequest = ClaimSourcesRequest.newBuilder()
+                .addSources(SourceToClaim.newBuilder()
+                        .setName("kafka-source-5")
+                        .setModifier("lock1")
+                        .build())
+                .build();
+        stub.claimSources(claimRequest);
+
+        KafkaSourceMessage kafkaSourceUpdate = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog-updated")
+                .setTrinoSchemaName("schema-updated")
+                .setStartOffset(100)
+                .setEndOffset(200)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-5")
+                .setModifier("lock1")
+                .build();
+
+        SourceUpdate sourceUpdateWithModifier = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSourceUpdate)
+                .build();
+        UpsertSourcesRequest upsertRequestWithModifier = UpsertSourcesRequest.newBuilder()
+                .addSources(sourceUpdateWithModifier)
+                .build();
+        stub.upsertSources(upsertRequestWithModifier);
+
+        KafkaSourceMessage kafkaSourceUpdateAgain = KafkaSourceMessage.newBuilder()
+                .setTrinoCatalogName("catalog-updated-again")
+                .setTrinoSchemaName("schema-updated-again")
+                .setStartOffset(200)
+                .setEndOffset(300)
+                .setPartitionNumber(0)
+                .setTopicName("topic")
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setName("kafka-source-5")
+                .setModifier("")
+                .build();
+
+        SourceUpdate sourceUpdateAgain = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSourceUpdateAgain)
+                .build();
+        UpsertSourcesRequest upsertRequestAgain =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdateAgain).build();
+        UpsertSourcesResponse responseAgain = stub.upsertSources(upsertRequestAgain);
+
+        assertThat(responseAgain.getSuccess()).isTrue();
+    }
 }

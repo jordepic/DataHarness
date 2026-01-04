@@ -87,6 +87,9 @@ public class PostgresSourceEntity implements SourceEntity {
     @Column(name = "history_table_name_no_tstzrange", nullable = false)
     private String historyTableNameNoTstzrange;
 
+    @Column(name = "modifier", nullable = false)
+    private String modifier = "";
+
     public PostgresSourceEntity() {}
 
     public PostgresSourceEntity(
@@ -218,5 +221,13 @@ public class PostgresSourceEntity implements SourceEntity {
 
     public void setHistoryTableNameNoTstzrange(String historyTableNameNoTstzrange) {
         this.historyTableNameNoTstzrange = historyTableNameNoTstzrange;
+    }
+
+    public String getModifier() {
+        return modifier;
+    }
+
+    public void setModifier(String modifier) {
+        this.modifier = modifier;
     }
 }

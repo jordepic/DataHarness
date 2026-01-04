@@ -42,4 +42,8 @@ public interface SourceEntity {
     String getTrinoSchemaName();
 
     void setTrinoSchemaName(String trinoSchemaName);
+
+    String getModifier();
+
+    void setModifier(String modifier);
 }

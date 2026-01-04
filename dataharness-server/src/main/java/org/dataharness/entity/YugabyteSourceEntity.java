@@ -78,6 +78,9 @@ public class YugabyteSourceEntity implements SourceEntity {
     @Column(name = "read_timestamp", nullable = false)
     private long readTimestamp;
 
+    @Column(name = "modifier", nullable = false)
+    private String modifier = "";
+
     public YugabyteSourceEntity() {}
 
     public YugabyteSourceEntity(
@@ -179,5 +182,13 @@ public class YugabyteSourceEntity implements SourceEntity {
 
     public void setReadTimestamp(long readTimestamp) {
         this.readTimestamp = readTimestamp;
+    }
+
+    public String getModifier() {
+        return modifier;
+    }
+
+    public void setModifier(String modifier) {
+        this.modifier = modifier;
     }
 }

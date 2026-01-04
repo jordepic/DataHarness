@@ -315,4 +315,46 @@ If the project gains popularity, I'll establish a more formal committee.
 
 ## Deploying
 
-For very simple docker images/helm charts, see the [docker hub](https://hub.docker.com/r/jordepic/data-harness/tags).
+For very simple docker images/helm charts, see [docker hub](https://hub.docker.com/r/jordepic/data-harness/tags).
+
+## Distributed Locking
+
+If using multiple processes to modify a DataHarness table's sources, we could encounter scenarios where they
+result in non-sensical updates.
+
+Example:
+
+- Process 1 reads from kafka topic partition 1 and adds data to iceberg table x
+- Process 2 reads from kafka topic partition 2 and adds data to iceberg table x
+
+Let's imagine process 1 puts data in the iceberg table first, resulting in an iceberg snapshot A.
+Then process 2 puts data in an iceberg table next, resulting in an iceberg snapshot of B (after A).
+
+However, process 2 commits to the data harness before process 1, resulting in Spark reading the iceberg table as of
+snapshot A. Then, we'll decline to show the data from process 2 that was in kafka and is now in iceberg, since we've
+updated
+our kafka topic partition 2 offsets to reflect the fact that we've processed this data.
+
+To solve this problem, we can use the DataHarness as a lock.
+
+1) Process 1 claims kafka partition 1 and iceberg table x
+2) Process 2 tries to claim kafka partition 2 and iceberg table x and fails because x is claimed
+    - As a result, it does not exchange any messages between kafka and iceberg
+3) Process 1 finishes processing both kafka partition 1 and iceberg table x, and updates the offsets in the DataHarness,
+   which releases its claims
+4) Process 2 retries claiming kafka partition 2 and iceberg table x and succeeds
+5) Process 2 exchanges messages between kafka partition 2 and iceberg table x, and updates the offsets in the
+   DataHarness, which releases its claims
+
+Is it so bad to have a distributed lock? These are all relatively infrequent metadata transactions which should be
+taking <1s at a time.
+
+Oh, but I wanted to have Iceberg data visible faster than that!
+
+- That's the point of the data harness: rather than committing that data to iceberg,
+  you can instead buffer it in a row store and query from there
+
+Oh, but I wanted to have many processes committing to my OLTP database at once!
+
+- So use many tables/partitions. That's how you avoid write conflicts in distributed systems.
+- The DataHarness will union them for you and ensure atomic schema evolutions

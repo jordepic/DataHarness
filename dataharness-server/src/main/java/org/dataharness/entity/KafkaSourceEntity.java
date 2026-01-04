@@ -84,6 +84,9 @@ public class KafkaSourceEntity implements SourceEntity {
     @Column(name = "schema")
     private String schema;
 
+    @Column(name = "modifier", nullable = false)
+    private String modifier = "";
+
     public KafkaSourceEntity() {}
 
     public KafkaSourceEntity(
@@ -224,5 +227,13 @@ public class KafkaSourceEntity implements SourceEntity {
 
     public void setSchema(String schema) {
         this.schema = schema;
+    }
+
+    public String getModifier() {
+        return modifier;
+    }
+
+    public void setModifier(String modifier) {
+        this.modifier = modifier;
     }
 }
