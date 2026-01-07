@@ -40,4 +40,5 @@ if [ $? -ne 0 ]; then
 fi
 
 cd "$DIR"
+docker-compose build --no-cache trino
 docker compose up
