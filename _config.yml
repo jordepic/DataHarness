@@ -12,7 +12,6 @@ exclude:
   - .gitignore
   - Gemfile
   - Gemfile.lock
-  - README.md
   - vendor/
 
 markdown: kramdown
