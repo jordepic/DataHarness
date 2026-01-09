@@ -3,15 +3,17 @@ layout: default
 ---
 
 <article class="blog-post">
-  <h1>{{ page.title }}</h1>
-  <p class="text-muted">
-    <small>Published on {{ page.date | date: "%B %d, %Y" }}</small>
-  </p>
-  
-  <hr class="my-4">
-  
-  {{ content }}
-  
-  <hr class="my-4">
-  <p><a href="{{ '/blog/' | relative_url }}">← Back to Blog</a></p>
+    <h1>{{ page.title }}</h1>
+    <p class="text-muted">
+        <small>Published on {{ page.date | date: "%B %d, %Y" }}</small>
+    </p>
+
+    <p><small>Author: {{ page.author }}</small></p>
+
+    <hr class="my-4">
+
+    {{ content }}
+
+    <hr class="my-4">
+    <p><a href="{{ '/blog/' | relative_url }}">← Back to Blog</a></p>
 </article>

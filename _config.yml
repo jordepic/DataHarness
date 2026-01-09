@@ -15,8 +15,3 @@ exclude:
   - vendor/
 
 markdown: kramdown
-
-collections:
-  blog:
-    output: true
-    permalink: /blog/:name
