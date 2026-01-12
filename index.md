@@ -7,6 +7,10 @@ title: DataHarness
   <a href="https://github.com/jordepic/DataHarness" target="_blank">
     <img src="https://img.shields.io/github/stars/jordepic/DataHarness?style=social" alt="GitHub Stars">
   </a>
+  <span style="margin: 0 1rem;"></span>
+  <a href="https://join.slack.com/t/dataharnessworkspace/shared_invite/zt-3n3dy8z6u-Ewlx5agZxpr3JW_i0v8Oaw" target="_blank">
+    <img src="https://img.shields.io/badge/Slack-Join%20Community-4A154B?logo=slack" alt="Join Slack">
+  </a>
 </div>
 
 # Welcome to DataHarness
@@ -17,6 +21,7 @@ DataHarness is a unified abstraction layer that brings together multiple table s
 
 - **[Documentation](/DataHarness/docs/)** - Learn how to use DataHarness
 - **[Blog](/DataHarness/blog/)** - Read articles about DataHarness
+- **[Slack Community](https://join.slack.com/t/dataharnessworkspace/shared_invite/zt-3n3dy8z6u-Ewlx5agZxpr3JW_i0v8Oaw)** - Join our community on Slack
 
 ## Features
 
