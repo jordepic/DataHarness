@@ -13,13 +13,41 @@ enum SchemaType {
 }
 
 service CatalogService {
+  /**
+   * Creates a table with the given name.
+   */
   rpc CreateTable(CreateTableRequest) returns (CreateTableResponse) {}
+  /**
+   * Updates table sources according to input. Table sources not listed here will not be modified.
+   * Sources are updated atomically via a database transaction.
+   * Will throw an exception if the passed in modifier does not align with existing claims on any sources.
+   * If successful, any claims on modified sources will be removed.
+   */
   rpc UpsertSources(UpsertSourcesRequest) returns (UpsertSourcesResponse) {}
+  /**
+   * Fetches table sources table metadata and sources. Table sources are loaded atomically via a database transaction.
+   */
   rpc LoadTable(LoadTableRequest) returns (LoadTableResponse) {}
+  /**
+   * List available tables.
+   */
   rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
+  /**
+   * Set schema to use when reading each table source.
+   */
   rpc SetSchema(SetSchemaRequest) returns (SetSchemaResponse) {}
+  /**
+   * Drop a table.
+   */
   rpc DropTable(DropTableRequest) returns (DropTableResponse) {}
+  /**
+   * Check if a table exists.
+   */
   rpc TableExists(TableExistsRequest) returns (TableExistsResponse) {}
+  /**
+   * Allows grabbing a lock on a set of table data sources such that any other process trying to modify them will fail.
+   * This lock does NOT expire.
+   */
   rpc ClaimSources(ClaimSourcesRequest) returns (ClaimSourcesResponse) {}
 }
 

@@ -700,10 +700,6 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
         }
     }
 
-    private void upsertPostgresSource(Session session, long tableId, PostgresDBSourceMessage postgresMsg) {
-        upsertPostgresSourceAndReturn(session, tableId, postgresMsg);
-    }
-
     private PostgresSourceEntity upsertPostgresSourceAndReturn(
             Session session, long tableId, PostgresDBSourceMessage postgresMsg) {
         PostgresSourceEntity existing = findSource(session, PostgresSourceEntity.class, tableId, postgresMsg.getName());
