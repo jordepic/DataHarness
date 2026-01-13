@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.example</groupId>
+    <groupId>com.jordepic.dataharness</groupId>
     <artifactId>DataHarness</artifactId>
     <version>${revision}</version>
   </parent>
@@ -44,7 +44,7 @@
       <artifactId>jakarta.persistence-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.example</groupId>
+      <groupId>com.jordepic.dataharness</groupId>
       <artifactId>dataharness-rpc</artifactId>
     </dependency>
     <dependency>
@@ -155,7 +155,7 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.example</groupId>
+      <groupId>com.jordepic.dataharness</groupId>
       <artifactId>dataharness-rpc</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
@@ -200,10 +200,10 @@
         <artifactId>jib-maven-plugin</artifactId>
         <configuration>
           <to>
-            <image>data-harness:latest</image>
+            <image>docker.io/jordepic/data-harness:${project.version}</image>
           </to>
           <container>
-            <mainClass>org.dataharness.Main</mainClass>
+            <mainClass>com.jordepic.dataharness.Main</mainClass>
             <jvmFlags>
               <jvmFlag>-Dhibernate.connection.url=jdbc:postgresql://postgres:5432/dataharness</jvmFlag>
               <jvmFlag>-Dhibernate.connection.username=postgres</jvmFlag>

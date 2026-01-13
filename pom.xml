@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.example</groupId>
+  <groupId>com.jordepic.dataharness</groupId>
   <artifactId>DataHarness</artifactId>
   <version>${revision}</version>
   <packaging>pom</packaging>
@@ -51,7 +51,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <protobuf.version>4.31.1</protobuf.version>
-    <revision>1.0-SNAPSHOT</revision>
+    <revision>1.0</revision>
     <scala-maven-plugin.version>4.9.1</scala-maven-plugin.version>
     <scalastyle-maven-plugin.version>1.0.0</scalastyle-maven-plugin.version>
     <slf4j.version>2.0.11</slf4j.version>
@@ -347,12 +347,12 @@
         <version>${assertj.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.example</groupId>
+        <groupId>com.jordepic.dataharness</groupId>
         <artifactId>dataharness-rpc</artifactId>
         <version>${revision}</version>
       </dependency>
       <dependency>
-        <groupId>org.example</groupId>
+        <groupId>com.jordepic.dataharness</groupId>
         <artifactId>dataharness-rpc</artifactId>
         <version>${revision}</version>
         <type>test-jar</type>
@@ -561,6 +561,16 @@
             </execution>
           </executions>
         </plugin>
+        <plugin>
+          <groupId>org.sonatype.central</groupId>
+          <artifactId>central-publishing-maven-plugin</artifactId>
+          <version>0.9.0</version>
+          <extensions>true</extensions>
+          <configuration>
+            <publishingServerId>central</publishingServerId>
+            <autoPublish>true</autoPublish>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -599,6 +609,10 @@
       <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
       </plugin>
     </plugins>
     <extensions>

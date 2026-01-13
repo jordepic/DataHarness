@@ -142,7 +142,7 @@ localhost:50051.
 
       stub.upsertSources(upsertSourcesBuilder.build());
 
-      ProtobufSchema protobufSchemaObj = new ProtobufSchema(org.dataharness.test.TestMessage.getDescriptor());
+      ProtobufSchema protobufSchemaObj = new ProtobufSchema(com.jordepic.dataharness.test.TestMessage.getDescriptor());
       String protobufSchema = protobufSchemaObj.canonicalString();
 
       SetSchemaRequest.Builder schemaRequestBuilder = SetSchemaRequest.newBuilder()
@@ -201,9 +201,9 @@ Two main features that are not currently supported but we hope to support soon:
 This repository exposes a spark catalog that you can set up very easily. To do so, create your spark program as follows:
 
 ```bash
-./bin/spark-sql --packages org.example:dataharness-spark:1.0-SNAPSHOT
---conf spark.sql.catalog.harness=org.dataharness.spark.DataHarnessCatalog
---conf spark.sql.extensions=org.dataharness.spark.DataHarnessExtension
+./bin/spark-sql --packages com.jordepic.dataharness:dataharness-spark:1.0
+--conf spark.sql.catalog.harness=com.jordepic.dataharness.spark.DataHarnessCatalog
+--conf spark.sql.extensions=com.jordepic.dataharness.spark.DataHarnessExtension
 --conf spark.sql.catalog.harness.data-harness-host=data-harness
 --conf spark.sql.catalog.harness.data-harness-port=50051
 ```
