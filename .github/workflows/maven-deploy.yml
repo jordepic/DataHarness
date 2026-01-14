@@ -38,6 +38,17 @@ jobs:
                 <password>${{ secrets.SONATYPE_PASSWORD }}</password>
               </server>
             </servers>
+            <profiles>
+              <profile>
+                <id>sign</id>
+                <properties>
+                  <gpg.passphrase>${{ env.MAVEN_GPG_PASSPHRASE }}</gpg.passphrase>
+                </properties>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>sign</activeProfile>
+            </activeProfiles>
           </settings>
           EOF
 
