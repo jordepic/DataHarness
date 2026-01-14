@@ -41,8 +41,15 @@ jobs:
           </settings>
           EOF
 
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | gpg --import --no-tty --batch --yes
+          echo "GPG_KEYNAME=$(gpg --list-secret-keys --with-colons | grep fpr | head -1 | cut -d: -f10)" >> $GITHUB_ENV
+
       - name: Deploy to Maven Central
-        run: mvn deploy -DskipTests
+        run: mvn deploy -DskipTests -Psign
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Build and push Docker image with Jib
         working-directory: ./dataharness-server
