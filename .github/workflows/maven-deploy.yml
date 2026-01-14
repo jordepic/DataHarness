@@ -38,17 +38,6 @@ jobs:
                 <password>${{ secrets.SONATYPE_PASSWORD }}</password>
               </server>
             </servers>
-            <profiles>
-              <profile>
-                <id>sign</id>
-                <properties>
-                  <gpg.passphrase>${{ env.MAVEN_GPG_PASSPHRASE }}</gpg.passphrase>
-                </properties>
-              </profile>
-            </profiles>
-            <activeProfiles>
-              <activeProfile>sign</activeProfile>
-            </activeProfiles>
           </settings>
           EOF
 
@@ -73,10 +62,9 @@ jobs:
           --import
 
       - name: Deploy to Maven Central
-        run: mvn deploy -DskipTests -Psign
+        run: mvn deploy -DskipTests -Psign -Dgpg.passphrase=$MAVEN_GPG_PASSPHRASE
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          MAVEN_GPG_PASSPHRASE_INTERACTIVE: false
 
       - name: Build and push Docker image with Jib
         working-directory: ./dataharness-server
