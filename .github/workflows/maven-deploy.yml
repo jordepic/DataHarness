@@ -43,13 +43,16 @@ jobs:
 
       - name: Import GPG key
         run: |
+          mkdir -p ~/.gnupg
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | gpg --import --no-tty --batch --yes
-          echo "GPG_KEYNAME=$(gpg --list-secret-keys --with-colons | grep fpr | head -1 | cut -d: -f10)" >> $GITHUB_ENV
+          echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent || true
 
       - name: Deploy to Maven Central
         run: mvn deploy -DskipTests -Psign
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          MAVEN_GPG_PASSPHRASE_INTERACTIVE: false
 
       - name: Build and push Docker image with Jib
         working-directory: ./dataharness-server
