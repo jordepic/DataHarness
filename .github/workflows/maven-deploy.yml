@@ -45,12 +45,21 @@ jobs:
         run: |
           mkdir -p ~/.gnupg
           chmod 700 ~/.gnupg
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | gpg --import --no-tty --batch --yes
-          cat >> ~/.gnupg/gpg-agent.conf <<EOF
+          
+          cat > ~/.gnupg/gpg-agent.conf <<'EOF'
           allow-loopback-pinentry
           default-cache-ttl 3600
           max-cache-ttl 3600
           EOF
+          
+          # Import key with loopback + passphrase
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | \
+          gpg --batch \
+          --yes \
+          --no-tty \
+          --pinentry-mode loopback \
+          --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+          --import
 
       - name: Deploy to Maven Central
         run: mvn deploy -DskipTests -Psign
