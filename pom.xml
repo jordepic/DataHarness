@@ -8,6 +8,33 @@
   <version>${revision}</version>
   <packaging>pom</packaging>
 
+  <name>DataHarness</name>
+  <description>A distributed data platform for managing and querying data across multiple engines</description>
+  <url>https://github.com/jordepic/dataharness</url>
+
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/jordepic/dataharness.git</connection>
+    <developerConnection>scm:git:https://github.com/jordepic/dataharness.git</developerConnection>
+    <url>https://github.com/jordepic/dataharness</url>
+  </scm>
+
+  <developers>
+    <developer>
+      <id>jordepic</id>
+      <name>Jordan Epstein</name>
+      <email>jordepstein@gmail.com</email>
+      <organization>DataHarness</organization>
+    </developer>
+  </developers>
+
   <modules>
     <module>dataharness-rpc</module>
     <module>dataharness-server</module>
@@ -40,7 +67,10 @@
     <license-maven-plugin.version>4.3</license-maven-plugin.version>
     <kafka.version>3.6.0</kafka.version>
     <logback.version>1.5.13</logback.version>
+    <maven-gpg-plugin.version>3.1.0</maven-gpg-plugin.version>
+    <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
     <maven-surefire-plugin.version>3.0.0</maven-surefire-plugin.version>
     <maven.compiler.release>17</maven.compiler.release>
     <mockito.version>5.12.0</mockito.version>
@@ -571,6 +601,24 @@
             <autoPublish>true</autoPublish>
           </configuration>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>${maven-source-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>${maven-javadoc-plugin.version}</version>
+          <configuration>
+            <failOnError>false</failOnError>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>${maven-gpg-plugin.version}</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -614,6 +662,30 @@
         <groupId>org.sonatype.central</groupId>
         <artifactId>central-publishing-maven-plugin</artifactId>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
     <extensions>
       <extension>
@@ -623,5 +695,28 @@
       </extension>
     </extensions>
   </build>
+
+  <profiles>
+    <profile>
+      <id>sign</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
 </project>
