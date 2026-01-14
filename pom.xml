@@ -708,6 +708,8 @@
               <gpgArguments>
                 <arg>--pinentry-mode</arg>
                 <arg>loopback</arg>
+                <arg>--batch</arg>
+                <arg>--no-tty</arg>
               </gpgArguments>
             </configuration>
             <executions>
