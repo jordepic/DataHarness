@@ -74,15 +74,17 @@ jobs:
       #            -Djib.to.auth.password=${{ secrets.DOCKER_TOKEN }}
 
       - name: Package Helm chart
-        run: mvn -N helm:package
-
-      - name: Registry login and push Helm chart
+        id: package
         run: |
-          mvn -N helm:registry-login \
-            -Dhelm.registryUrl=oci://registry-1.docker.io \
-            -Dhelm.registryUsername=${{ secrets.DOCKER_USERNAME }} \
-            -Dhelm.registryPassword=${{ secrets.DOCKER_PASSWORD }}
-          mvn -N helm:push \
-            -Dhelm.registryUrl=oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }} \
-            -Dhelm.registryUsername=${{ secrets.DOCKER_USERNAME }} \
-            -Dhelm.registryPassword=${{ secrets.DOCKER_PASSWORD }}
+          OUTPUT=$(mvn -N helm:package 2>&1)
+          echo "$OUTPUT"
+          CHART_PATH=$(echo "$OUTPUT" | grep -oP 'saved it to: \K.*\.tgz')
+          echo "chart_path=$CHART_PATH" >> $GITHUB_OUTPUT
+
+      - name: Push Helm chart to Docker Hub
+        run: |
+          helm registry login registry-1.docker.io \
+            -u ${{ secrets.DOCKER_USERNAME }} \
+            -p ${{ secrets.DOCKER_PASSWORD }}
+          helm push ${{ steps.package.outputs.chart_path }} \
+            oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts
