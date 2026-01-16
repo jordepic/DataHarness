@@ -96,6 +96,7 @@
     <testcontainers.version>1.20.4</testcontainers.version>
     <trino-maven-plugin.version>15</trino-maven-plugin.version>
     <trino.version>476</trino.version>
+    <helm-maven-plugin.version>6.17.0</helm-maven-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -620,6 +621,16 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-gpg-plugin</artifactId>
           <version>${maven-gpg-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>io.kokuwa.maven</groupId>
+          <artifactId>helm-maven-plugin</artifactId>
+          <version>${helm-maven-plugin.version}</version>
+          <configuration>
+            <chartDirectory>${project.basedir}/helm</chartDirectory>
+            <chartVersion>${revision}</chartVersion>
+            <useLocalHelmBinary>true</useLocalHelmBinary>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>
