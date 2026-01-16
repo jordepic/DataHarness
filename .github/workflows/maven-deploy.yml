@@ -74,13 +74,13 @@ jobs:
       #            -Djib.to.auth.password=${{ secrets.DOCKER_TOKEN }}
 
       - name: Package Helm chart
-        run: mvn helm:package
+        run: mvn -N helm:package
 
       - name: Registry login and push Helm chart
         run: |
-          mvn helm:registry-login \
+          mvn -N helm:registry-login \
             -Dhelm.registryUrl=oci://registry-1.docker.io \
             -Dhelm.registryUsername=${{ secrets.DOCKER_USERNAME }} \
             -Dhelm.registryPassword=${{ secrets.DOCKER_TOKEN }}
-          mvn helm:push \
+          mvn -N helm:push \
             -Dhelm.registryUrl=oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts
