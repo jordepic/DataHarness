@@ -693,6 +693,7 @@
         <groupId>io.kokuwa.maven</groupId>
         <artifactId>helm-maven-plugin</artifactId>
         <version>${helm-maven-plugin.version}</version>
+        <inherited>false</inherited>
         <configuration>
           <chartDirectory>${project.basedir}/helm</chartDirectory>
           <chartVersion>${revision}</chartVersion>
