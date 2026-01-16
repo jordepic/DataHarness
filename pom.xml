@@ -696,7 +696,7 @@
         <inherited>false</inherited>
         <configuration>
           <chartDirectory>${project.basedir}/helm</chartDirectory>
-          <chartVersion>${revision}</chartVersion>
+          <chartVersion>${revision}-helm</chartVersion>
           <useLocalHelmBinary>true</useLocalHelmBinary>
         </configuration>
       </plugin>
