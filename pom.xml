@@ -701,6 +701,8 @@
           <uploadRepoStable>
             <name>docker-hub</name>
             <url>${helm.registryUrl}</url>
+            <username>${helm.registryUsername}</username>
+            <password>${helm.registryPassword}</password>
           </uploadRepoStable>
         </configuration>
       </plugin>
