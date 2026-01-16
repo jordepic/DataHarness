@@ -83,4 +83,6 @@ jobs:
             -Dhelm.registryUsername=${{ secrets.DOCKER_USERNAME }} \
             -Dhelm.registryPassword=${{ secrets.DOCKER_TOKEN }}
           mvn -N helm:push \
-            -Dhelm.registryUrl=oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts
+            -Dhelm.registryUrl=oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts \
+            -Dhelm.registryUsername=${{ secrets.DOCKER_USERNAME }} \
+            -Dhelm.registryPassword=${{ secrets.DOCKER_TOKEN }}
