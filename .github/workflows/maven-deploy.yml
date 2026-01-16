@@ -17,61 +17,61 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      #      - name: Run spotless
-      #        run: mvn spotless:apply -T4
-      #
-      #      - name: Build project
-      #        run: mvn clean install -DskipTests -T4 -U
-      #
-      #      - name: Configure Maven settings
-      #        run: |
-      #          mkdir -p ~/.m2
-      #          cat > ~/.m2/settings.xml <<EOF
-      #          <?xml version="1.0" encoding="UTF-8"?>
-      #          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-      #                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      #                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-      #            <servers>
-      #              <server>
-      #                <id>central</id>
-      #                <username>${{ secrets.SONATYPE_USERNAME }}</username>
-      #                <password>${{ secrets.SONATYPE_PASSWORD }}</password>
-      #              </server>
-      #            </servers>
-      #          </settings>
-      #          EOF
-      #
-      #      - name: Import GPG key
-      #        run: |
-      #          mkdir -p ~/.gnupg
-      #          chmod 700 ~/.gnupg
-      #
-      #          cat > ~/.gnupg/gpg-agent.conf <<'EOF'
-      #          allow-loopback-pinentry
-      #          default-cache-ttl 3600
-      #          max-cache-ttl 3600
-      #          EOF
-      #
-      #          # Import key with loopback + passphrase
-      #          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | \
-      #          gpg --batch \
-      #          --yes \
-      #          --no-tty \
-      #          --pinentry-mode loopback \
-      #          --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
-      #          --import
-      #
-      #      - name: Deploy to Maven Central
-      #        run: mvn deploy -DskipTests -Psign -Dgpg.passphrase=$MAVEN_GPG_PASSPHRASE
-      #        env:
-      #          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      #
-      #      - name: Build and push Docker image with Jib
-      #        working-directory: ./dataharness-server
-      #        run: |
-      #          mvn jib:build \
-      #            -Djib.to.auth.username=${{ secrets.DOCKER_USERNAME }} \
-      #            -Djib.to.auth.password=${{ secrets.DOCKER_TOKEN }}
+      - name: Run spotless
+        run: mvn spotless:apply -T4
+
+      - name: Build project
+        run: mvn clean install -DskipTests -T4 -U
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <servers>
+                <server>
+                  <id>central</id>
+                    <username>${{ secrets.SONATYPE_USERNAME }}</username>
+                    <password>${{ secrets.SONATYPE_PASSWORD }}</password>
+                </server>
+              </servers>
+          </settings>
+          EOF
+
+      - name: Import GPG key
+        run: |
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+
+          cat > ~/.gnupg/gpg-agent.conf <<'EOF'
+          allow-loopback-pinentry
+          default-cache-ttl 3600
+          max-cache-ttl 3600
+          EOF
+
+          # Import key with loopback + passphrase
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | \
+          gpg --batch \
+            --yes \
+            --no-tty \
+            --pinentry-mode loopback \
+            --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --import
+
+      - name: Deploy to Maven Central
+        run: mvn deploy -DskipTests -Psign -Dgpg.passphrase=$MAVEN_GPG_PASSPHRASE
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Build and push Docker image with Jib
+        working-directory: ./dataharness-server
+        run: |
+          mvn jib:build \
+            -Djib.to.auth.username=${{ secrets.DOCKER_USERNAME }} \
+            -Djib.to.auth.password=${{ secrets.DOCKER_TOKEN }}
 
       - name: Package Helm chart
         id: package
