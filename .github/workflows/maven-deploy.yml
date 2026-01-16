@@ -87,4 +87,4 @@ jobs:
             -u ${{ secrets.DOCKER_USERNAME }} \
             -p ${{ secrets.DOCKER_PASSWORD }}
           helm push ${{ steps.package.outputs.chart_path }} \
-            oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts
+            oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}
