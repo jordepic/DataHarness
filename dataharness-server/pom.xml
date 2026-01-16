@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.jordepic.dataharness</groupId>
+    <groupId>io.github.jordepic</groupId>
     <artifactId>DataHarness</artifactId>
     <version>${revision}</version>
   </parent>
 
   <artifactId>dataharness-server</artifactId>
+  <name>DataHarness Server</name>
+  <description>gRPC server for DataHarness catalog and metadata management</description>
 
   <dependencies>
     <dependency>
@@ -44,7 +47,7 @@
       <artifactId>jakarta.persistence-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.jordepic.dataharness</groupId>
+      <groupId>io.github.jordepic</groupId>
       <artifactId>dataharness-rpc</artifactId>
     </dependency>
     <dependency>
@@ -155,7 +158,7 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.jordepic.dataharness</groupId>
+      <groupId>io.github.jordepic</groupId>
       <artifactId>dataharness-rpc</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
@@ -203,7 +206,7 @@
             <image>docker.io/jordepic/data-harness:${project.version}</image>
           </to>
           <container>
-            <mainClass>com.jordepic.dataharness.Main</mainClass>
+            <mainClass>io.github.jordepic.Main</mainClass>
             <jvmFlags>
               <jvmFlag>-Dhibernate.connection.url=jdbc:postgresql://postgres:5432/dataharness</jvmFlag>
               <jvmFlag>-Dhibernate.connection.username=postgres</jvmFlag>

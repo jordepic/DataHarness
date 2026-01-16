@@ -3,12 +3,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.jordepic.dataharness</groupId>
+    <groupId>io.github.jordepic</groupId>
     <artifactId>DataHarness</artifactId>
     <version>${revision}</version>
   </parent>
 
   <artifactId>dataharness-trino</artifactId>
+  <name>DataHarness Trino</name>
+  <description>Trino connector plugin for DataHarness</description>
   <packaging>trino-plugin</packaging>
 
   <properties>
@@ -173,7 +175,7 @@
       <artifactId>avro</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.jordepic.dataharness</groupId>
+      <groupId>io.github.jordepic</groupId>
       <artifactId>dataharness-rpc</artifactId>
     </dependency>
     <dependency>

@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.jordepic.dataharness</groupId>
+  <groupId>io.github.jordepic</groupId>
   <artifactId>DataHarness</artifactId>
   <version>${revision}</version>
   <packaging>pom</packaging>
@@ -43,12 +43,13 @@
   </modules>
 
   <properties>
-    <airlift.version>367</airlift.version>
+    <airlift.version>2.4</airlift.version>
     <assertj.version>3.25.3</assertj.version>
     <avro.version>1.12.0</avro.version>
     <awssdk.version>2.24.0</awssdk.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <confluent.version>8.1.1</confluent.version>
+    <dep.airlift.version>367</dep.airlift.version>
     <flatten-maven-plugin.version>1.6.0</flatten-maven-plugin.version>
     <grpc.version>1.77.0</grpc.version>
     <guava.version>33.0.0-jre</guava.version>
@@ -102,7 +103,7 @@
       <dependency>
         <groupId>io.airlift</groupId>
         <artifactId>bom</artifactId>
-        <version>${airlift.version}</version>
+        <version>${dep.airlift.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -377,12 +378,12 @@
         <version>${assertj.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.jordepic.dataharness</groupId>
+        <groupId>io.github.jordepic</groupId>
         <artifactId>dataharness-rpc</artifactId>
         <version>${revision}</version>
       </dependency>
       <dependency>
-        <groupId>com.jordepic.dataharness</groupId>
+        <groupId>io.github.jordepic</groupId>
         <artifactId>dataharness-rpc</artifactId>
         <version>${revision}</version>
         <type>test-jar</type>
@@ -430,6 +431,7 @@
       <dependency>
         <groupId>io.airlift</groupId>
         <artifactId>slice</artifactId>
+        <version>${airlift.version}</version>
         <scope>provided</scope>
       </dependency>
     </dependencies>

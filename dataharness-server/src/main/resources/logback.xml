@@ -34,6 +34,6 @@
     <appender-ref ref="CONSOLE"/>
   </root>
 
-  <logger name="com.jordepic.dataharness" level="DEBUG"/>
+  <logger name="io.github.jordepic" level="DEBUG"/>
   <logger name="org.hibernate" level="WARN"/>
 </configuration>
