@@ -698,6 +698,10 @@
           <chartDirectory>${project.basedir}/helm</chartDirectory>
           <chartVersion>${revision}</chartVersion>
           <useLocalHelmBinary>true</useLocalHelmBinary>
+          <uploadRepoStable>
+            <name>docker-hub</name>
+            <url>${helm.registryUrl}</url>
+          </uploadRepoStable>
         </configuration>
       </plugin>
     </plugins>
