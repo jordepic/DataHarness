@@ -622,16 +622,6 @@
           <artifactId>maven-gpg-plugin</artifactId>
           <version>${maven-gpg-plugin.version}</version>
         </plugin>
-        <plugin>
-          <groupId>io.kokuwa.maven</groupId>
-          <artifactId>helm-maven-plugin</artifactId>
-          <version>${helm-maven-plugin.version}</version>
-          <configuration>
-            <chartDirectory>${project.basedir}/helm</chartDirectory>
-            <chartVersion>${revision}</chartVersion>
-            <useLocalHelmBinary>true</useLocalHelmBinary>
-          </configuration>
-        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -698,6 +688,16 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>io.kokuwa.maven</groupId>
+        <artifactId>helm-maven-plugin</artifactId>
+        <version>${helm-maven-plugin.version}</version>
+        <configuration>
+          <chartDirectory>${project.basedir}/helm</chartDirectory>
+          <chartVersion>${revision}</chartVersion>
+          <useLocalHelmBinary>true</useLocalHelmBinary>
+        </configuration>
       </plugin>
     </plugins>
     <extensions>
