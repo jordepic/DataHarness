@@ -69,7 +69,7 @@ What does this mean?
 
 - In their vanilla state, we cannot support MySQL and PostgresSQL as first class citizens of DataHarness
 - However, we can support MySQL and PostgresSQL wire-protocol compliant databases like TiDB and YugabyteDB or use
-  extensions!
+  MySQL/Postgres extensions!
 
 ## Creating A DataHarness Table
 
@@ -221,7 +221,7 @@ be needed to read:
 
 You can
 see [our integration test docker compose file](./dataharness-server/src/test/java/org/dataharness/bootstrap/docker-compose.yaml)
-for an example of us runnning with an iceberg catalog, a YugabyteDB table, and a kafka topic with avro-encoded data.
+for an example of us running with an iceberg catalog, a YugabyteDB table, and a kafka topic with avro-encoded data.
 
 NOTE:
 
@@ -356,5 +356,5 @@ Oh, but I wanted to have Iceberg data visible faster than that!
 
 Oh, but I wanted to have many processes committing to my OLTP database at once!
 
-- So use many tables/partitions. That's how you avoid write conflicts in distributed systems.
+- So use many tables/partitions. That's how you avoid write conflicts in distributed systems
 - The DataHarness will union them for you and ensure atomic schema evolutions
