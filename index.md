@@ -19,8 +19,8 @@ DataHarness is a unified abstraction layer that brings together multiple table s
 
 ## Quick Links
 
-- **[Documentation](/DataHarness/docs/)** - Learn how to use DataHarness
-- **[Blog](/DataHarness/blog/)** - Read articles about DataHarness
+- **[Documentation]({{ '/docs/' | relative_url }})** - Learn how to use DataHarness
+- **[Blog]({{ '/blog/' | relative_url }})** - Read articles about DataHarness
 - **[Slack Community](https://join.slack.com/t/dataharnessworkspace/shared_invite/zt-3n3dy8z6u-Ewlx5agZxpr3JW_i0v8Oaw)** - Join our community on Slack
 
 ## Features
@@ -32,4 +32,4 @@ DataHarness is a unified abstraction layer that brings together multiple table s
 
 ## Getting Started
 
-Check out the [Documentation](/DataHarness/docs/) section to learn more about setting up and using DataHarness.
+Check out the [Documentation]({{ '/docs/' | relative_url }}) section to learn more about setting up and using DataHarness.

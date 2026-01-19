@@ -147,7 +147,7 @@ Benefits of the DataHarness:
       iceberg)
 - When spark/trino query your table, they'll union data from both kafka and iceberg without any duplicates or drops
 
-<img src="/DataHarness/assets/images/simple.png" alt="simple" width="1000">
+<img src="{{ site.baseurl }}/assets/images/simple.png" alt="simple" width="1000">
 
 **Medium Example:**
 
@@ -183,7 +183,7 @@ Finally:
 - Spark/Trino read the DataHarness to get the appropriate source offsets/read timestamps, and then query them
 - Using simple SQL, we can take our union view and create an auxiliary "primary key view" which deduplicates rows
 
-<img src="/DataHarness/assets/images/medium.png" alt="medium" width="1000">
+<img src="{{ site.baseurl }}/assets/images/medium.png" alt="medium" width="1000">
 
 **Expert Example:**
 
@@ -203,7 +203,7 @@ Benefits of the DataHarness:
   at a time
 - Kafka offsets, postgres read timestamps, and paimon read timestamps are all modified one partition at a time
 
-<img src="/DataHarness/assets/images/expert.png" alt="expert" width="1000">
+<img src="{{ site.baseurl }}/assets/images/expert.png" alt="expert" width="1000">
 
 **Basement Dweller Example:**
 
@@ -215,7 +215,7 @@ Benefits of the DataHarness:
 - You can co-locate your OLTP data, DuckLake metastore, and DataHarness in the same Postgres instance
 - Performing committing a CDC operation between Postgres and DuckLake just takes a single database transaction
 
-<img src="/DataHarness/assets/images/dweller.png" alt="dweller" width="1000">
+<img src="{{ site.baseurl }}/assets/images/dweller.png" alt="dweller" width="1000">
 
 ## Conclusion
 
