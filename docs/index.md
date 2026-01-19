@@ -35,7 +35,7 @@ is that it supports ACID transactions.
 
 ## Spark
 
-DataHarness requires importing two Spark dependencies:
+DataHarness requires importing two dependencies when initializing spark:
 
 1) The DataHarness catalog (communicates with the DataHarness server)
 2) The DataHarness extension (rewrites scan plans to federate between individual table sources)
