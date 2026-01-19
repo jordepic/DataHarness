@@ -233,4 +233,26 @@
     </plugins>
   </build>
 
+  <profiles>
+    <profile>
+      <id>ci-java17-tests</id>
+      <activation>
+        <property>
+          <name>env.JAVA17_HOME</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <jvm>${env.JAVA17_HOME}/bin/java</jvm>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
 </project>
