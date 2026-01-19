@@ -22,6 +22,7 @@
  */
 package io.github.jordepic.bootstrap;
 
+import io.github.jordepic.db.HibernateSessionManager;
 import io.github.jordepic.proto.CatalogServiceGrpc;
 import io.github.jordepic.server.GrpcServer;
 import io.grpc.ManagedChannel;
@@ -159,6 +160,7 @@ public class DataHarnessTest {
             grpcServer.stop();
             logger.info("DataHarness gRPC server stopped");
         }
+        HibernateSessionManager.closeSessionFactory();
         if (environment != null) {
             try {
                 environment.stop();

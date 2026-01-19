@@ -57,6 +57,8 @@ public class CatalogServiceIntegrationTest {
 
     @BeforeAll
     public static void setUpClass() throws IOException {
+        HibernateSessionManager.closeSessionFactory();
+
         postgres = new PostgreSQLContainer<>("postgres:15")
                 .withDatabaseName("dataharness")
                 .withUsername("postgres")
@@ -89,6 +91,7 @@ public class CatalogServiceIntegrationTest {
         if (grpcServer != null) {
             grpcServer.stop();
         }
+        HibernateSessionManager.closeSessionFactory();
         if (postgres != null) {
             postgres.stop();
         }
