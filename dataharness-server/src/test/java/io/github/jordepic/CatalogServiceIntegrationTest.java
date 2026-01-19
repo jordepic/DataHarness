@@ -47,6 +47,14 @@ public class CatalogServiceIntegrationTest {
     private static ManagedChannel channel;
     private CatalogServiceGrpc.CatalogServiceBlockingStub stub;
 
+    private static String getPostgresHost() {
+        String host = postgres.getHost();
+        if ("localhost".equals(host)) {
+            return postgres.getContainerIpAddress();
+        }
+        return host;
+    }
+
     @BeforeAll
     public static void setUpClass() throws IOException {
         postgres = new PostgreSQLContainer<>("postgres:15")
@@ -55,9 +63,11 @@ public class CatalogServiceIntegrationTest {
                 .withPassword("postgres");
         postgres.start();
 
+        String postgresHost = getPostgresHost();
+        int postgresPort = postgres.getFirstMappedPort();
+
         System.setProperty(
-                "hibernate.connection.url",
-                "jdbc:postgresql://" + postgres.getHost() + ":" + postgres.getFirstMappedPort() + "/dataharness");
+                "hibernate.connection.url", "jdbc:postgresql://" + postgresHost + ":" + postgresPort + "/dataharness");
         System.setProperty("hibernate.connection.username", "postgres");
         System.setProperty("hibernate.connection.password", "postgres");
         System.setProperty("hibernate.hbm2ddl.auto", "create-drop");

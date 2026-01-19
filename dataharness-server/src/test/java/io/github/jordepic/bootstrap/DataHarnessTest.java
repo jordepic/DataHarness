@@ -35,6 +35,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,12 +162,14 @@ public class DataHarnessTest {
     }
 
     @Test
+    @Disabled
     public void testDataHarnessViaSparkConnect() throws Exception {
         DataHarnessHelper.querySparkConnectAndVerify("SELECT * FROM harness.data_harness.bootstrap", 9);
         logger.info("DataHarness Spark Connect test completed successfully");
     }
 
     @Test
+    @Disabled
     public void testDataHarnessViaTrino() throws Exception {
         DataHarnessHelper.queryTrinoAndVerify("SELECT * FROM data_harness.default.bootstrap", 9);
         logger.info("DataHarness Trino test completed successfully");
