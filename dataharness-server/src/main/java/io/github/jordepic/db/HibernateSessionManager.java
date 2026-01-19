@@ -81,4 +81,18 @@ public class HibernateSessionManager {
         }
         return sessionFactory.openSession();
     }
+
+    public static synchronized void closeSessionFactory() {
+        if (sessionFactory != null && !sessionFactory.isClosed()) {
+            sessionFactory.close();
+            LOGGER.info("SessionFactory closed");
+            sessionFactory = null;
+        }
+    }
+
+    public static synchronized void resetSessionFactory() {
+        closeSessionFactory();
+        initializeSessionFactory();
+        LOGGER.info("SessionFactory reset");
+    }
 }
