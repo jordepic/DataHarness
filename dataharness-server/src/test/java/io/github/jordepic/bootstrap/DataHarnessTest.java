@@ -24,15 +24,10 @@ package io.github.jordepic.bootstrap;
 
 import io.github.jordepic.proto.CatalogServiceGrpc;
 import io.github.jordepic.server.GrpcServer;
-import java.io.File;
-import java.time.Duration;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
@@ -59,19 +54,25 @@ public class DataHarnessTest {
     private static final String MINIO_ACCESS_KEY = "minioadmin";
     private static final String MINIO_SECRET_KEY = "minioadmin";
 
-//    @Container
-//    static DockerComposeContainer<?> environment = new DockerComposeContainer<>(
-//                    new File("src/test/java/io/github/jordepic/bootstrap/docker-compose-testcontainers.yaml"))
-//            .withServices("kafka", "schema-registry", "minio", "gravitino-iceberg-rest", "postgres", "spark", "trino")
-//            .withExposedService("kafka", 9092, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
-//            .withExposedService(
-//                    "schema-registry", 8081, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
-//            .withExposedService("minio", 9000, Wait.forHealthcheck().withStartupTimeout(Duration.ofSeconds(120)))
-//            .withExposedService(
-//                    "gravitino-iceberg-rest", 9001, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
-//            .withExposedService("postgres", 5432, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
-//            .withExposedService("spark", 15002, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(300)))
-//            .withExposedService("trino", 8080, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(300)));
+    //    @Container
+    //    static DockerComposeContainer<?> environment = new DockerComposeContainer<>(
+    //                    new File("src/test/java/io/github/jordepic/bootstrap/docker-compose-testcontainers.yaml"))
+    //            .withServices("kafka", "schema-registry", "minio", "gravitino-iceberg-rest", "postgres", "spark",
+    // "trino")
+    //            .withExposedService("kafka", 9092,
+    // Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
+    //            .withExposedService(
+    //                    "schema-registry", 8081, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
+    //            .withExposedService("minio", 9000, Wait.forHealthcheck().withStartupTimeout(Duration.ofSeconds(120)))
+    //            .withExposedService(
+    //                    "gravitino-iceberg-rest", 9001,
+    // Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
+    //            .withExposedService("postgres", 5432,
+    // Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
+    //            .withExposedService("spark", 15002,
+    // Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(300)))
+    //            .withExposedService("trino", 8080,
+    // Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(300)));
 
     private static GrpcServer grpcServer;
     private static CatalogServiceGrpc.CatalogServiceBlockingStub stub;
