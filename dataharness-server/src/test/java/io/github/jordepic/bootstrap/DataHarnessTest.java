@@ -91,14 +91,18 @@ public class DataHarnessTest {
     public static void setUpClass() throws Exception {
         environment = new DockerComposeContainer<>(
                         new File("src/test/java/io/github/jordepic/bootstrap/docker-compose-testcontainers.yaml"))
-                .withServices("kafka", "schema-registry", "minio", "gravitino-iceberg-rest", "postgres", "spark", "trino")
+                .withServices(
+                        "kafka", "schema-registry", "minio", "gravitino-iceberg-rest", "postgres", "spark", "trino")
                 .withExposedService("kafka", 9092, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
                 .withExposedService(
                         "schema-registry", 8081, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
                 .withExposedService("minio", 9000, Wait.forHealthcheck().withStartupTimeout(Duration.ofSeconds(120)))
                 .withExposedService(
-                        "gravitino-iceberg-rest", 9001, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
-                .withExposedService("postgres", 5432, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
+                        "gravitino-iceberg-rest",
+                        9001,
+                        Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
+                .withExposedService(
+                        "postgres", 5432, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(120)))
                 .withExposedService("spark", 15002, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(300)))
                 .withExposedService("trino", 8080, Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(300)));
 
