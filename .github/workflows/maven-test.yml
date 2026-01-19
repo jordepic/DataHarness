@@ -1,0 +1,24 @@
+name: Maven Test and Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build project
+        run: mvn clean install -DskipTests -T1C -U
+
+      - name: Run tests
+        run: mvn test -T1C
