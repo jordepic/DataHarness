@@ -22,19 +22,18 @@
  */
 package io.github.jordepic.bootstrap;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.github.jordepic.proto.*;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import java.sql.*;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.connect.Dataset;
 import org.apache.spark.sql.connect.SparkSession;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-
-import java.sql.*;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration test that populates Kafka, YugabyteDB, Iceberg, and DataHarness with test data.
@@ -45,200 +44,200 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>This test is idempotent and will clean up existing data before populating new data.
  */
 public class DataPopulatorIntegrationTest {
-  public static final String NOT_IMPLEMENTED = "";
-  private static final String BOOTSTRAP_SERVERS = "localhost:9092";
-  private static final String BOOTSTRAP_SERVERS_FOR_SPARK = "kafka:29092";
-  private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
-  private static final String TOPIC = "kafka_avro_test";
-  private static final String DATA_HARNESS_TABLE = "bootstrap";
-  private static final String ICEBERG_TABLE_NAME = "iceberg_test";
-  private static final String YUGABYTE_TABLE_NAME = "yugabyte_test";
-  private static final String YUGABYTE_JDBC_URL = "jdbc:postgresql://localhost:5433/yugabyte?sslmode=disable";
-  private static final String YUGABYTE_JDBC_URL_FOR_SPARK =
-    "jdbc:postgresql://yugabytedb:5433/yugabyte?sslmode=disable";
-  private static final String YUGABYTE_USER = "yugabyte";
-  private static final String YUGABYTE_PASSWORD = "";
-  private static final String POSTGRES_JDBC_URL = "jdbc:postgresql://localhost:5432/postgres?sslmode=disable";
-  private static final String POSTGRES_USER = "postgres";
-  private static final String POSTGRES_PASSWORD = "postgres";
-  private static final String POSTGRES_TABLE_NAME = "postgres_test";
-  private static final String TABLE_SCHEMA = "id INT PRIMARY KEY, name TEXT, address TEXT";
-  private static final String MINIO_ENDPOINT = "http://localhost:9000";
-  private static final String MINIO_ACCESS_KEY = "minioadmin";
-  private static final String MINIO_SECRET_KEY = "minioadmin";
+    public static final String NOT_IMPLEMENTED = "";
+    private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+    private static final String BOOTSTRAP_SERVERS_FOR_SPARK = "kafka:29092";
+    private static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
+    private static final String TOPIC = "kafka_avro_test";
+    private static final String DATA_HARNESS_TABLE = "bootstrap";
+    private static final String ICEBERG_TABLE_NAME = "iceberg_test";
+    private static final String YUGABYTE_TABLE_NAME = "yugabyte_test";
+    private static final String YUGABYTE_JDBC_URL = "jdbc:postgresql://localhost:5433/yugabyte?sslmode=disable";
+    private static final String YUGABYTE_JDBC_URL_FOR_SPARK =
+            "jdbc:postgresql://yugabytedb:5433/yugabyte?sslmode=disable";
+    private static final String YUGABYTE_USER = "yugabyte";
+    private static final String YUGABYTE_PASSWORD = "";
+    private static final String POSTGRES_JDBC_URL = "jdbc:postgresql://localhost:5432/postgres?sslmode=disable";
+    private static final String POSTGRES_USER = "postgres";
+    private static final String POSTGRES_PASSWORD = "postgres";
+    private static final String POSTGRES_TABLE_NAME = "postgres_test";
+    private static final String TABLE_SCHEMA = "id INT PRIMARY KEY, name TEXT, address TEXT";
+    private static final String MINIO_ENDPOINT = "http://localhost:9000";
+    private static final String MINIO_ACCESS_KEY = "minioadmin";
+    private static final String MINIO_SECRET_KEY = "minioadmin";
 
-  @Test
-  @Disabled
-  public void bootstrapDataHarness() throws Exception {
-    DataSourcePopulator.deleteKafkaTopic(BOOTSTRAP_SERVERS, TOPIC);
-    DataHarnessHelper.deleteDataHarnessTable(getStub(), DATA_HARNESS_TABLE);
-    deleteYugabyteTable();
-    DataSourcePopulator.deletePostgresTable(
-      POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_TABLE_NAME);
+    @Test
+    @Disabled
+    public void bootstrapDataHarness() throws Exception {
+        DataSourcePopulator.deleteKafkaTopic(BOOTSTRAP_SERVERS, TOPIC);
+        DataHarnessHelper.deleteDataHarnessTable(getStub(), DATA_HARNESS_TABLE);
+        deleteYugabyteTable();
+        DataSourcePopulator.deletePostgresTable(
+                POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_TABLE_NAME);
 
-    long yugabyteTimestamp = populateYugabyteDB();
-    DataSourcePopulator.KafkaPopulationResult kafkaResult =
-      DataSourcePopulator.populateKafka(BOOTSTRAP_SERVERS, SCHEMA_REGISTRY_URL, TOPIC);
-    DataSourcePopulator.IcebergPopulationResult icebergResult = DataSourcePopulator.populateIceberg(
-      MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, ICEBERG_TABLE_NAME);
-    long postgresTimestamp = DataSourcePopulator.populatePostgres(
-      POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_TABLE_NAME);
+        long yugabyteTimestamp = populateYugabyteDB();
+        DataSourcePopulator.KafkaPopulationResult kafkaResult =
+                DataSourcePopulator.populateKafka(BOOTSTRAP_SERVERS, SCHEMA_REGISTRY_URL, TOPIC);
+        DataSourcePopulator.IcebergPopulationResult icebergResult = DataSourcePopulator.populateIceberg(
+                MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, ICEBERG_TABLE_NAME);
+        long postgresTimestamp = DataSourcePopulator.populatePostgres(
+                POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_TABLE_NAME);
 
-    CatalogServiceGrpc.CatalogServiceBlockingStub stub = getStub();
+        CatalogServiceGrpc.CatalogServiceBlockingStub stub = getStub();
 
-    DataHarnessHelper.createDataHarnessTable(
-      stub,
-      DATA_HARNESS_TABLE,
-      TOPIC,
-      BOOTSTRAP_SERVERS_FOR_SPARK,
-      kafkaResult,
-      ICEBERG_TABLE_NAME,
-      icebergResult,
-      POSTGRES_TABLE_NAME,
-      postgresTimestamp);
+        DataHarnessHelper.createDataHarnessTable(
+                stub,
+                DATA_HARNESS_TABLE,
+                TOPIC,
+                BOOTSTRAP_SERVERS_FOR_SPARK,
+                kafkaResult,
+                ICEBERG_TABLE_NAME,
+                icebergResult,
+                POSTGRES_TABLE_NAME,
+                postgresTimestamp);
 
-    UpsertSourcesRequest.Builder upsertSourcesBuilder = UpsertSourcesRequest.newBuilder();
+        UpsertSourcesRequest.Builder upsertSourcesBuilder = UpsertSourcesRequest.newBuilder();
 
-    YugabyteDBSourceMessage yugabyteSource = YugabyteDBSourceMessage.newBuilder()
-      .setTrinoCatalogName(NOT_IMPLEMENTED)
-      .setTrinoSchemaName(NOT_IMPLEMENTED)
-      .setTableName(YUGABYTE_TABLE_NAME)
-      .setJdbcUrl(YUGABYTE_JDBC_URL_FOR_SPARK)
-      .setUsername(YUGABYTE_USER)
-      .setPassword(YUGABYTE_PASSWORD)
-      .setReadTimestamp(yugabyteTimestamp)
-      .build();
+        YugabyteDBSourceMessage yugabyteSource = YugabyteDBSourceMessage.newBuilder()
+                .setTrinoCatalogName(NOT_IMPLEMENTED)
+                .setTrinoSchemaName(NOT_IMPLEMENTED)
+                .setTableName(YUGABYTE_TABLE_NAME)
+                .setJdbcUrl(YUGABYTE_JDBC_URL_FOR_SPARK)
+                .setUsername(YUGABYTE_USER)
+                .setPassword(YUGABYTE_PASSWORD)
+                .setReadTimestamp(yugabyteTimestamp)
+                .build();
 
-    SourceUpdate yugabyteSourceUpdate = SourceUpdate.newBuilder()
-      .setTableName(DATA_HARNESS_TABLE)
-      .setYugabytedbSource(yugabyteSource)
-      .build();
+        SourceUpdate yugabyteSourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(DATA_HARNESS_TABLE)
+                .setYugabytedbSource(yugabyteSource)
+                .build();
 
-    upsertSourcesBuilder.addSources(yugabyteSourceUpdate);
+        upsertSourcesBuilder.addSources(yugabyteSourceUpdate);
 
-    stub.upsertSources(upsertSourcesBuilder.build());
+        stub.upsertSources(upsertSourcesBuilder.build());
 
-    ProtobufSchema protobufSchemaObj = new ProtobufSchema(TestMessage.getDescriptor());
-    String protobufSchema = protobufSchemaObj.canonicalString();
+        ProtobufSchema protobufSchemaObj = new ProtobufSchema(TestMessage.getDescriptor());
+        String protobufSchema = protobufSchemaObj.canonicalString();
 
-    SetSchemaRequest.Builder schemaRequestBuilder = SetSchemaRequest.newBuilder()
-      .setTableName(DATA_HARNESS_TABLE)
-      .setAvroSchema(kafkaResult.avroSchema)
-      .setProtobufSchema(protobufSchema);
+        SetSchemaRequest.Builder schemaRequestBuilder = SetSchemaRequest.newBuilder()
+                .setTableName(DATA_HARNESS_TABLE)
+                .setAvroSchema(kafkaResult.avroSchema)
+                .setProtobufSchema(protobufSchema);
 
-    schemaRequestBuilder.setIcebergSchema(icebergResult.icebergSchema);
+        schemaRequestBuilder.setIcebergSchema(icebergResult.icebergSchema);
 
-    SetSchemaRequest schemaRequest = schemaRequestBuilder.build();
+        SetSchemaRequest schemaRequest = schemaRequestBuilder.build();
 
-    stub.setSchema(schemaRequest);
+        stub.setSchema(schemaRequest);
 
-    fetchAndValidateSources(stub);
-    connectAndQuerySparkConnect();
-    DataHarnessHelper.queryTrinoAndVerify("SELECT * FROM data_harness.default.bootstrap", 9);
-  }
-
-  private CatalogServiceGrpc.CatalogServiceBlockingStub getStub() {
-    ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
-      .usePlaintext()
-      .build();
-    return CatalogServiceGrpc.newBlockingStub(channel);
-  }
-
-  private void fetchAndValidateSources(CatalogServiceGrpc.CatalogServiceBlockingStub stub) {
-    LoadTableRequest request =
-      LoadTableRequest.newBuilder().setTableName(DATA_HARNESS_TABLE).build();
-
-    LoadTableResponse response = stub.loadTable(request);
-  }
-
-  private void deleteYugabyteTable() {
-    try (Connection conn = DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
-      try (Statement stmt = conn.createStatement()) {
-        stmt.execute("DROP TABLE IF EXISTS " + YUGABYTE_TABLE_NAME);
-      }
-    } catch (Exception e) {
-      System.err.println("Failed to delete YugabyteDB table: " + e.getMessage());
+        fetchAndValidateSources(stub);
+        connectAndQuerySparkConnect();
+        DataHarnessHelper.queryTrinoAndVerify("SELECT * FROM data_harness.default.bootstrap", 9);
     }
-  }
 
-  private long populateYugabyteDB() throws Exception {
-    try (Connection conn = DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
-      try (Statement stmt = conn.createStatement()) {
-        stmt.execute("CREATE TABLE IF NOT EXISTS " + YUGABYTE_TABLE_NAME + " (" + TABLE_SCHEMA + ")");
-      }
+    private CatalogServiceGrpc.CatalogServiceBlockingStub getStub() {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
+                .usePlaintext()
+                .build();
+        return CatalogServiceGrpc.newBlockingStub(channel);
+    }
 
-      String insertSql = "INSERT INTO " + YUGABYTE_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
-      try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
-        pstmt.setInt(1, 1);
-        pstmt.setString(2, "YugabyteAlice");
-        pstmt.setString(3, "123 Yugabyte St");
-        pstmt.addBatch();
+    private void fetchAndValidateSources(CatalogServiceGrpc.CatalogServiceBlockingStub stub) {
+        LoadTableRequest request =
+                LoadTableRequest.newBuilder().setTableName(DATA_HARNESS_TABLE).build();
 
-        pstmt.setInt(1, 2);
-        pstmt.setString(2, "YugabyteBob");
-        pstmt.setString(3, "456 Distributed Ave");
-        pstmt.addBatch();
+        LoadTableResponse response = stub.loadTable(request);
+    }
 
-        pstmt.setInt(1, 3);
-        pstmt.setString(2, "YugabyteCharlie");
-        pstmt.setString(3, "789 Database Ln");
-        pstmt.addBatch();
-
-        pstmt.executeBatch();
-      }
-
-      long timestamp = 0;
-      try (Statement stmt = conn.createStatement()) {
-        ResultSet rs =
-          stmt.executeQuery("SELECT (EXTRACT (EPOCH FROM CURRENT_TIMESTAMP)*1000000)::decimal(38,0)");
-        if (rs.next()) {
-          timestamp = Long.parseLong(rs.getString(1));
+    private void deleteYugabyteTable() {
+        try (Connection conn = DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("DROP TABLE IF EXISTS " + YUGABYTE_TABLE_NAME);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to delete YugabyteDB table: " + e.getMessage());
         }
-      }
+    }
 
-      try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
-        pstmt.setInt(1, 4);
-        pstmt.setString(2, "YugabyteDiana");
-        pstmt.setString(3, "321 SQL St");
-        pstmt.addBatch();
+    private long populateYugabyteDB() throws Exception {
+        try (Connection conn = DriverManager.getConnection(YUGABYTE_JDBC_URL, YUGABYTE_USER, YUGABYTE_PASSWORD)) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE TABLE IF NOT EXISTS " + YUGABYTE_TABLE_NAME + " (" + TABLE_SCHEMA + ")");
+            }
 
-        pstmt.setInt(1, 5);
-        pstmt.setString(2, "YugabyteEve");
-        pstmt.setString(3, "654 YSQL Ave");
-        pstmt.addBatch();
+            String insertSql = "INSERT INTO " + YUGABYTE_TABLE_NAME + " (id, name, address) VALUES (?, ?, ?)";
+            try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                pstmt.setInt(1, 1);
+                pstmt.setString(2, "YugabyteAlice");
+                pstmt.setString(3, "123 Yugabyte St");
+                pstmt.addBatch();
 
-        pstmt.setInt(1, 6);
-        pstmt.setString(2, "YugabyteFrank");
-        pstmt.setString(3, "987 Consistency Ln");
-        pstmt.addBatch();
+                pstmt.setInt(1, 2);
+                pstmt.setString(2, "YugabyteBob");
+                pstmt.setString(3, "456 Distributed Ave");
+                pstmt.addBatch();
 
-        pstmt.executeBatch();
-      }
+                pstmt.setInt(1, 3);
+                pstmt.setString(2, "YugabyteCharlie");
+                pstmt.setString(3, "789 Database Ln");
+                pstmt.addBatch();
 
-      try (Statement stmt = conn.createStatement()) {
-        ResultSet rs =
-          stmt.executeQuery("SELECT id, name, address FROM " + YUGABYTE_TABLE_NAME + " ORDER BY id");
-        System.out.println("YugabyteDB records:");
-        while (rs.next()) {
-          System.out.println("  id="
-            + rs.getInt("id")
-            + ", name="
-            + rs.getString("name")
-            + ", address="
-            + rs.getString("address"));
+                pstmt.executeBatch();
+            }
+
+            long timestamp = 0;
+            try (Statement stmt = conn.createStatement()) {
+                ResultSet rs =
+                        stmt.executeQuery("SELECT (EXTRACT (EPOCH FROM CURRENT_TIMESTAMP)*1000000)::decimal(38,0)");
+                if (rs.next()) {
+                    timestamp = Long.parseLong(rs.getString(1));
+                }
+            }
+
+            try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                pstmt.setInt(1, 4);
+                pstmt.setString(2, "YugabyteDiana");
+                pstmt.setString(3, "321 SQL St");
+                pstmt.addBatch();
+
+                pstmt.setInt(1, 5);
+                pstmt.setString(2, "YugabyteEve");
+                pstmt.setString(3, "654 YSQL Ave");
+                pstmt.addBatch();
+
+                pstmt.setInt(1, 6);
+                pstmt.setString(2, "YugabyteFrank");
+                pstmt.setString(3, "987 Consistency Ln");
+                pstmt.addBatch();
+
+                pstmt.executeBatch();
+            }
+
+            try (Statement stmt = conn.createStatement()) {
+                ResultSet rs =
+                        stmt.executeQuery("SELECT id, name, address FROM " + YUGABYTE_TABLE_NAME + " ORDER BY id");
+                System.out.println("YugabyteDB records:");
+                while (rs.next()) {
+                    System.out.println("  id="
+                            + rs.getInt("id")
+                            + ", name="
+                            + rs.getString("name")
+                            + ", address="
+                            + rs.getString("address"));
+                }
+            }
+
+            return timestamp;
         }
-      }
-
-      return timestamp;
     }
-  }
 
-  private void connectAndQuerySparkConnect() {
-    try (SparkSession spark =
-           SparkSession.builder().remote("sc://localhost:15002").getOrCreate()) {
-      Dataset<Row> result = spark.sql("SELECT * FROM harness.data_harness.bootstrap");
+    private void connectAndQuerySparkConnect() {
+        try (SparkSession spark =
+                SparkSession.builder().remote("sc://localhost:15002").getOrCreate()) {
+            Dataset<Row> result = spark.sql("SELECT * FROM harness.data_harness.bootstrap");
 
-      assertThat(result.collectAsList()).hasSize(12);
+            assertThat(result.collectAsList()).hasSize(12);
+        }
     }
-  }
 }
