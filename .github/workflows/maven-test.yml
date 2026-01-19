@@ -17,8 +17,15 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - name: Build project
         run: mvn clean install -DskipTests -T1C -U
 
-      - name: Run tests
+      - name: Run tests with Java 17
         run: mvn test -T1C
+        env:
+          JAVA17_HOME: ${{ env.JAVA_HOME_17_X64 }}
