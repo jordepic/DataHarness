@@ -1,7 +1,7 @@
 title: DataHarness
 description: A unified abstraction layer for multiple table sources
-baseurl: /DataHarness
-url: https://jordanepstein.github.io
+baseurl: /
+url: https://www.dataharness.org
 
 theme: minima
 
