@@ -1,7 +1,5 @@
 # DataHarness Repository
 
-I'M TESTING A PULL REQUEST
-
 ## Project Overview
 
 In the past few years, we've seen the proliferation of new table formats for analyzing big data. While these
@@ -222,7 +220,7 @@ be needed to read:
 - And so on...
 
 You can
-see [our integration test docker compose file](./dataharness-server/src/test/java/org/dataharness/bootstrap/docker-compose.yaml)
+see [our integration test docker compose file](./dataharness-server/src/test/java/io/github/jordepic/bootstrap/docker-compose.yaml)
 for an example of us running with an iceberg catalog, a YugabyteDB table, and a kafka topic with avro-encoded data.
 
 NOTE:
@@ -243,9 +241,19 @@ For Trino, setting up the Data Harness is fairly simple!
     - Since this is a custom plugin, you should follow the directions to install them from
       the [trino docs](https://trino.io/docs/current/installation/plugins.html#installation)
     - We have an example of extracting the zip file and putting it in the trino docker
-      image [here](/Users/jordanepstein/data/DataHarness/dataharness-server/src/test/java/org/dataharness/bootstrap/Dockerfile.trino)
+      image [here](dataharness-server/src/test/java/io/github/jordepic/bootstrap/Dockerfile.trino)
 3. In each of your table "sources", be sure to set the appropriate Trino catalog name and schema name that you used for
    your catalogs in step 1
+
+Configure your Trino DataHarness source!
+
+```
+connector.name=data_harness
+data-harness.host=host.docker.internal
+data-harness.port=50051
+```
+
+Note: If you are planning on using PostgreSQL as a data source, please read [the postgres setup section](#setting-up-postgresql-sources).
 
 ## Setting Up PostgreSQL Sources
 
@@ -265,7 +273,7 @@ These extensions allow creating a second table for data auditing that allows us 
     - To work in Trino, you must create a view for the "current" table and "audit" (or history) table which extracts the
       range column to two simple timestamp columns called `tsstart` and `tsend`
         - You can see an example of how to do this
-          in [DataPopulatorIntegrationTest](dataharness-server/src/test/java/org/dataharness/bootstrap/DataPopulatorIntegrationTest.java)
+          in [DataPopulatorIntegrationTest](dataharness-server/src/test/java/io/github/jordepic/bootstrap/DataPopulatorIntegrationTest.java)
 
 ## Why Not Mooncake?
 
@@ -302,7 +310,8 @@ In the future, I hope that there is room for DataHarness and Mooncake to work to
 
 1) Mooncake still performs CDC from a postgres table into arrow buffers in-memory on an arrow flight server
 2) The arrow flight server is a DataHarness source
-    - Presto can [already read arrow flight data](https://prestodb.io/docs/current/connector/base-arrow-flight.html)
+    - Spark can already [read flight data](https://github.com/qwshen/spark-flight-connector?tab=readme-ov-file), so can
+      Presto [can too](https://prestodb.io/docs/current/connector/base-arrow-flight.html)
 
 DataHarness is not opinionated on the CDC framework that you use. It is simply a primitive to build correct and complex
 distributed tables.

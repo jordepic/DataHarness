@@ -6,262 +6,51 @@ permalink: /docs/
 
 # DataHarness Documentation
 
-DataHarness is a unified abstraction layer that brings together multiple table sources into a single abstract table interface.
+DataHarness is a unified abstraction layer that brings together multiple table sources into a single abstract table
+interface.
 
 ## Overview
 
-DataHarness provides a gRPC-based service that manages:
-- **Table Metadata**: Centralized tracking of table schemas and configurations
-- **Source Management**: Unified interface for Kafka, Iceberg, PostgreSQL, and YugabyteDB sources
-- **Time-Based Queries**: Support for reading data at specific timestamps/offsets
-- **Schema Tracking**: Avro, Protobuf, and Iceberg schema management
+DataHarness aims to unify multiple different data sources into a single tabular interface. Clients of the
+DataHarness can create tables, atomically update a "schema" across many sources, atomically update and query the
+displayed
+data from each source. It offers protections against multiple concurrent writers by "claiming" data sources.
+
+For a complete list of which query engines and sources DataHarness supports, see
+the [readme](https://github.com/jordepic/DataHarness/blob/main/readme.md#currently-supported).
+
+For a list of protobuf RPC calls to interact with DataHarness, see
+the [proto spec](https://github.com/jordepic/DataHarness/blob/main/dataharness-rpc/src/main/proto/catalog.proto).
+
+Docker images and helm charts can be
+found [on the docker hub](https://hub.docker.com/repository/docker/jordepic/data-harness).
 
 ## Architecture
 
-The DataHarness system consists of:
+DataHarness is a stateless GRPC server that interfaces with a database via Hibernate.
 
-1. **PostgreSQL Backend** - Stores table metadata, schemas, and source configurations
-2. **gRPC Service** - Provides the primary client interface via the CatalogService
-3. **Data Sources** - Pluggable connectors for various data systems
-4. **Query Engine Plugins** - Integrations with Trino and Spark (in development)
+For now, the helm chart in this repository uses a single server replica and a single database instance, though this will
+be scaled out in the future for improved throughput and availability. The only theoretical requirement of our database
+is that it supports ACID transactions.
 
-## gRPC API Reference
+## Spark
 
-The DataHarness gRPC API is defined in the `CatalogService` and provides the following operations:
+DataHarness requires importing two Spark dependencies:
 
-### Table Management
+1) The DataHarness catalog (communicates with the DataHarness server)
+2) The DataHarness extension (rewrites scan plans to federate between individual table sources)
 
-#### CreateTable
-Creates a new table in the DataHarness catalog.
+To run DataHarness with Spark, see the [readme](https://hub.docker.com/repository/docker/jordepic/data-harness).
 
-**Request:**
-- `name` (string): Name of the table to create
+In addition to the notes there, keep in mind that any data sources that you are reading from (e.g. kafka, iceberg) also
+still need to be added as dependencies to your spark job.
 
-**Response:**
-- `success` (bool): Whether the operation succeeded
-- `message` (string): Status message
-- `table_id` (int64): ID of the created table
+## Trino
 
-#### DropTable
-Removes a table from the DataHarness catalog.
+Trino setup is fairly simple, with a small amount of extra work to do if using a PostgreSQL database as a table source.
+See the [readme](https://github.com/jordepic/DataHarness/blob/main/readme.md#trino-setup).
 
-**Request:**
-- `table_name` (string): Name of the table to drop
+## Known Issues
 
-**Response:**
-- `success` (bool): Whether the operation succeeded
-- `message` (string): Status message
-
-#### TableExists
-Checks if a table exists in the catalog.
-
-**Request:**
-- `table_name` (string): Name of the table to check
-
-**Response:**
-- `exists` (bool): Whether the table exists
-
-#### ListTables
-Lists all tables in the catalog.
-
-**Request:** Empty
-
-**Response:**
-- `table_names` (repeated string): List of table names
-
-### Source Management
-
-#### UpsertSources
-Creates or updates data sources for tables. This operation is atomic - all sources are updated together.
-
-**Request:**
-- `sources` (repeated SourceUpdate): List of source updates to apply
-
-Each `SourceUpdate` contains:
-- `table_name` (string): Name of the table
-- One of:
-  - `kafka_source`: Kafka topic configuration
-  - `iceberg_source`: Iceberg table configuration
-  - `yugabytedb_source`: YugabyteDB table configuration
-  - `postgresdb_source`: PostgreSQL table configuration
-
-**Response:**
-- `success` (bool): Whether the operation succeeded
-- `message` (string): Status message
-
-#### ClaimSources
-Claims ownership of specific sources by their modifier.
-
-**Request:**
-- `sources` (repeated SourceToClaim): List of sources to claim
-  - `name` (string): Source name
-  - `modifier` (string): Modifier identifier
-
-**Response:**
-- `success` (bool): Whether the operation succeeded
-- `message` (string): Status message
-
-### Schema Management
-
-#### SetSchema
-Sets the schema for a table (supports Avro, Protobuf, or Iceberg schemas).
-
-**Request:**
-- `table_name` (string): Name of the table
-- `avro_schema` (optional string): Avro schema JSON
-- `iceberg_schema` (optional string): Iceberg schema JSON
-- `protobuf_schema` (optional string): Protobuf schema descriptor
-
-**Response:**
-- `success` (bool): Whether the operation succeeded
-- `message` (string): Status message
-
-#### LoadTable
-Retrieves complete table metadata including schema and sources.
-
-**Request:**
-- `table_name` (string): Name of the table to load
-
-**Response:**
-- `avro_schema` (optional string): Avro schema if set
-- `iceberg_schema` (optional string): Iceberg schema if set
-- `protobuf_schema` (optional string): Protobuf schema if set
-- `sources` (repeated TableSourceMessage): List of configured sources
-
-## Data Source Types
-
-### Kafka Source
-Represents a Kafka topic as a data source.
-
-**Configuration:**
-- `name`: Source identifier
-- `topic_name`: Kafka topic name
-- `broker_urls`: Kafka broker connection string
-- `start_offset` / `end_offset`: Offset range to read
-- `partition_number`: Partition to read from
-- `schema_type`: AVRO or PROTOBUF
-- `schema`: Schema definition
-- `trino_catalog_name` / `trino_schema_name`: Trino metadata
-
-### Iceberg Source
-Represents an Apache Iceberg table as a data source.
-
-**Configuration:**
-- `name`: Source identifier
-- `table_name`: Iceberg table name
-- `read_timestamp`: Timestamp for time-travel queries
-- `spark_catalog_name` / `spark_schema_name`: Spark metadata
-- `trino_catalog_name` / `trino_schema_name`: Trino metadata
-
-### PostgreSQL Source
-Represents a PostgreSQL table with temporal support.
-
-**Configuration:**
-- `name`: Source identifier
-- `table_name`: Main table name
-- `history_table_name`: History table for temporal queries
-- `jdbc_url`: PostgreSQL connection string
-- `username` / `password`: Database credentials
-- `read_timestamp`: Timestamp for point-in-time queries
-
-### YugabyteDB Source
-Represents a YugabyteDB table.
-
-**Configuration:**
-- `name`: Source identifier
-- `table_name`: YugabyteDB table name
-- `jdbc_url`: YugabyteDB connection string
-- `username` / `password`: Database credentials
-- `read_timestamp`: Timestamp for consistent reads
-- `trino_catalog_name` / `trino_schema_name`: Trino metadata
-
-## Getting Started
-
-### Prerequisites
-- Java 17 or higher
-- PostgreSQL database
-- Maven 3.6+
-
-### Running DataHarness
-
-1. Start the required infrastructure:
-   ```bash
-   ./start_images.sh
-   ```
-
-2. Build the project:
-   ```bash
-   mvn clean install -DskipTests -T4 -U
-   ```
-
-3. Run the server:
-   ```bash
-   cd dataharness-server
-   mvn exec:java
-   ```
-
-### Example: Creating a Table with Kafka Source
-
-```java
-// Create gRPC channel
-ManagedChannel channel = ManagedChannelBuilder
-    .forAddress("localhost", 9090)
-    .usePlaintext()
-    .build();
-
-CatalogServiceGrpc.CatalogServiceBlockingStub stub = 
-    CatalogServiceGrpc.newBlockingStub(channel);
-
-// Create table
-CreateTableResponse createResp = stub.createTable(
-    CreateTableRequest.newBuilder()
-        .setName("my_table")
-        .build()
-);
-
-// Add Kafka source
-UpsertSourcesResponse upsertResp = stub.upsertSources(
-    UpsertSourcesRequest.newBuilder()
-        .addSources(SourceUpdate.newBuilder()
-            .setTableName("my_table")
-            .setKafkaSource(KafkaSourceMessage.newBuilder()
-                .setName("kafka_source_1")
-                .setTopicName("my_topic")
-                .setBrokerUrls("localhost:9092")
-                .setStartOffset(0)
-                .setEndOffset(1000)
-                .setPartitionNumber(0)
-                .setSchemaType(SchemaType.AVRO)
-                .setSchema("{...avro schema...}")
-                .build())
-            .build())
-        .build()
-);
-```
-
-## Protobuf Schema Reference
-
-The complete protobuf schema can be found at:
-- [catalog.proto](/DataHarness/dataharness-rpc/src/main/proto/catalog.proto)
-
-## Integration with Query Engines
-
-### Trino Plugin (In Development)
-The DataHarness Trino plugin allows querying unified tables via SQL:
-
-```sql
-SELECT * FROM dataharness.default.my_table;
-```
-
-This transparently queries all configured sources and unions the results.
-
-### Spark Connector (Planned)
-Spark integration will allow reading DataHarness tables as DataFrames.
-
-## Best Practices
-
-1. **Atomic Source Updates**: Always use `UpsertSources` to update all sources for a table atomically
-2. **Schema Consistency**: Ensure all sources for a table have compatible schemas
-3. **Timestamp Management**: Use consistent timestamp formats across sources for reliable time-based queries
-4. **Connection Pooling**: Reuse gRPC channels for better performance
-5. **Error Handling**: Always check the `success` flag in responses and handle errors appropriately
+- Complex type evolution is not supported (we're unioning these tables with SQL statements for now, thus limiting our
+  flexibility).
