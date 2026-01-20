@@ -82,7 +82,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <protobuf.version>4.31.1</protobuf.version>
-    <revision>1.0</revision>
+    <revision>2.0</revision>
     <scala-maven-plugin.version>4.9.1</scala-maven-plugin.version>
     <scalastyle-maven-plugin.version>1.0.0</scalastyle-maven-plugin.version>
     <slf4j.version>2.0.11</slf4j.version>
