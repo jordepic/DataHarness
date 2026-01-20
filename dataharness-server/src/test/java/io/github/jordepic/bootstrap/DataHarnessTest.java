@@ -75,12 +75,12 @@ public class DataHarnessTest {
 
     static {
         try {
-            Path pluginZip = Paths.get("../dataharness-trino/target/dataharness-trino-1.0.zip")
+            Path pluginZip = Paths.get("../dataharness-trino/target/dataharness-trino-2.0.zip")
                     .toAbsolutePath();
             Path targetDir = Paths.get("src/test/java/io/github/jordepic/bootstrap/dataharness-trino/target")
                     .toAbsolutePath();
             Files.createDirectories(targetDir);
-            Path destination = targetDir.resolve("dataharness-trino-1.0.zip");
+            Path destination = targetDir.resolve("dataharness-trino-2.0.zip");
             Files.copy(pluginZip, destination, StandardCopyOption.REPLACE_EXISTING);
             logger.info("Copied Trino plugin zip to test directory");
         } catch (IOException e) {

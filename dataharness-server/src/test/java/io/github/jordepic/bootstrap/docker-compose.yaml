@@ -160,14 +160,14 @@ services:
     tmpfs:
       - /nonexistent
     volumes:
-      - ../../../../../../../../dataharness-spark/target/dataharness-spark-1.0.jar:/app/jars/dataharness-spark-1.0.jar:ro
-      - ../../../../../../../../dataharness-rpc/target/dataharness-rpc-1.0.jar:/app/jars/dataharness-rpc-1.0.jar:ro
+      - ../../../../../../../../dataharness-spark/target/dataharness-spark-2.0.jar:/app/jars/dataharness-spark-2.0.jar:ro
+      - ../../../../../../../../dataharness-rpc/target/dataharness-rpc-2.0.jar:/app/jars/dataharness-rpc-2.0.jar:ro
     command:
       - /opt/spark/bin/spark-submit
       - --class
       - org.apache.spark.sql.connect.service.SparkConnectServer
       - --jars
-      - /app/jars/dataharness-spark-1.0.jar,/app/jars/dataharness-rpc-1.0.jar
+      - /app/jars/dataharness-spark-2.0.jar,/app/jars/dataharness-rpc-2.0.jar
       - --packages
       - org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.0,org.apache.spark:spark-avro_2.13:4.1.0,org.postgresql:postgresql:42.7.3,org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.10.0,org.apache.hadoop:hadoop-aws:3.4.0,com.amazonaws:aws-java-sdk-bundle:1.12.780,io.grpc:grpc-netty-shaded:1.77.0,io.grpc:grpc-protobuf:1.77.0,io.grpc:grpc-stub:1.77.0,com.google.protobuf:protobuf-java:4.31.1
       - --conf

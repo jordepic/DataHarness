@@ -201,7 +201,7 @@ Two main features that are not currently supported but we hope to support soon:
 This repository exposes a spark catalog that you can set up very easily. To do so, create your spark program as follows:
 
 ```bash
-./bin/spark-sql --packages io.github.jordepic:dataharness-spark:1.0
+./bin/spark-sql --packages io.github.jordepic:dataharness-spark:2.0
 --conf spark.sql.catalog.harness=io.github.jordepic.spark.DataHarnessCatalog
 --conf spark.sql.extensions=io.github.jordepic.spark.DataHarnessExtension
 --conf spark.sql.catalog.harness.data-harness-host=data-harness
@@ -253,7 +253,8 @@ data-harness.host=host.docker.internal
 data-harness.port=50051
 ```
 
-Note: If you are planning on using PostgreSQL as a data source, please read [the postgres setup section](#setting-up-postgresql-sources).
+Note: If you are planning on using PostgreSQL as a data source, please
+read [the postgres setup section](#setting-up-postgresql-sources).
 
 ## Setting Up PostgreSQL Sources
 
