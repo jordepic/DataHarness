@@ -616,6 +616,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setBrokerUrls(kafkaMsg.getBrokerUrls());
             existing.setSchemaType(kafkaMsg.getSchemaType().getNumber());
             existing.setSchema(kafkaMsg.getSchema());
+            existing.setPartitionFilter(kafkaMsg.getPartitionFilter());
             session.merge(existing);
             return existing;
         } else {
@@ -631,6 +632,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     kafkaMsg.getBrokerUrls(),
                     kafkaMsg.getSchemaType().getNumber(),
                     kafkaMsg.getSchema());
+            entity.setPartitionFilter(kafkaMsg.getPartitionFilter());
             session.persist(entity);
             return entity;
         }
@@ -650,6 +652,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setReadTimestamp(icebergMsg.getReadTimestamp());
             existing.setSparkCatalogName(icebergMsg.getSparkCatalogName());
             existing.setSparkSchemaName(icebergMsg.getSparkSchemaName());
+            existing.setPartitionFilter(icebergMsg.getPartitionFilter());
             session.merge(existing);
             return existing;
         } else {
@@ -662,6 +665,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     icebergMsg.getReadTimestamp(),
                     icebergMsg.getSparkCatalogName(),
                     icebergMsg.getSparkSchemaName());
+            entity.setPartitionFilter(icebergMsg.getPartitionFilter());
             session.persist(entity);
             return entity;
         }
@@ -682,6 +686,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setUsername(yugabyteMsg.getUsername());
             existing.setPassword(yugabyteMsg.getPassword());
             existing.setReadTimestamp(yugabyteMsg.getReadTimestamp());
+            existing.setPartitionFilter(yugabyteMsg.getPartitionFilter());
             session.merge(existing);
             return existing;
         } else {
@@ -695,6 +700,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     yugabyteMsg.getUsername(),
                     yugabyteMsg.getPassword(),
                     yugabyteMsg.getReadTimestamp());
+            entity.setPartitionFilter(yugabyteMsg.getPartitionFilter());
             session.persist(entity);
             return entity;
         }
@@ -714,6 +720,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
             existing.setHistoryTableName(postgresMsg.getHistoryTableName());
             existing.setTableNameNoTstzrange(postgresMsg.getTableNameNoTstzrange());
             existing.setHistoryTableNameNoTstzrange(postgresMsg.getHistoryTableNameNoTstzrange());
+            existing.setPartitionFilter(postgresMsg.getPartitionFilter());
             session.merge(existing);
             return existing;
         } else {
@@ -730,6 +737,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     postgresMsg.getHistoryTableName(),
                     postgresMsg.getTableNameNoTstzrange(),
                     postgresMsg.getHistoryTableNameNoTstzrange());
+            entity.setPartitionFilter(postgresMsg.getPartitionFilter());
             session.persist(entity);
             return entity;
         }
@@ -753,7 +761,8 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     .setEndOffset(kafka.getEndOffset())
                     .setPartitionNumber(kafka.getPartitionNumber())
                     .setTopicName(kafka.getTopicName())
-                    .setModifier(kafka.getModifier());
+                    .setModifier(kafka.getModifier())
+                    .setPartitionFilter(kafka.getPartitionFilter() != null ? kafka.getPartitionFilter() : "");
 
             if (kafka.getBrokerUrls() != null && !kafka.getBrokerUrls().isEmpty()) {
                 kafkaMsgBuilder.setBrokerUrls(kafka.getBrokerUrls());
@@ -790,6 +799,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     .setSparkCatalogName(iceberg.getSparkCatalogName() != null ? iceberg.getSparkCatalogName() : "")
                     .setSparkSchemaName(iceberg.getSparkSchemaName() != null ? iceberg.getSparkSchemaName() : "")
                     .setModifier(iceberg.getModifier())
+                    .setPartitionFilter(iceberg.getPartitionFilter() != null ? iceberg.getPartitionFilter() : "")
                     .build();
 
             TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
@@ -814,6 +824,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                     .setPassword(yugabyte.getPassword())
                     .setReadTimestamp(yugabyte.getReadTimestamp())
                     .setModifier(yugabyte.getModifier())
+                    .setPartitionFilter(yugabyte.getPartitionFilter() != null ? yugabyte.getPartitionFilter() : "")
                     .build();
 
             TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()
@@ -845,6 +856,7 @@ public class CatalogServiceImpl extends CatalogServiceGrpc.CatalogServiceImplBas
                                     ? postgres.getHistoryTableNameNoTstzrange()
                                     : "")
                     .setModifier(postgres.getModifier())
+                    .setPartitionFilter(postgres.getPartitionFilter() != null ? postgres.getPartitionFilter() : "")
                     .build();
 
             TableSourceMessage sourceMessage = TableSourceMessage.newBuilder()

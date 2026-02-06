@@ -22,21 +22,15 @@
  */
 package io.github.jordepic.spark.rules
 
+import io.github.jordepic.proto._
 import io.github.jordepic.spark.DataHarnessTable
-import io.github.jordepic.proto.{
-  IcebergSourceMessage,
-  KafkaSourceMessage,
-  LoadTableResponse,
-  PostgresDBSourceMessage,
-  SchemaType,
-  YugabyteDBSourceMessage
-}
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.catalyst.expressions.Alias
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Project}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Relation
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, SparkSession}
+
 import scala.jdk.CollectionConverters._
 
 case class UnionTableResolutionRule(spark: SparkSession)
@@ -116,7 +110,7 @@ case class UnionTableResolutionRule(spark: SparkSession)
       .options(kafkaOptions)
       .load()
 
-    kafkaSource.getSchemaType match {
+    val df = kafkaSource.getSchemaType match {
       case SchemaType.SCHEMA_TYPE_UNSPECIFIED | SchemaType.UNRECOGNIZED =>
         throw new IllegalArgumentException(
           "Kafka source does not have associated schema"
@@ -133,6 +127,13 @@ case class UnionTableResolutionRule(spark: SparkSession)
             s"""from_avro(substring(value, 6), '$avroSchema') as val"""
           )
           .selectExpr("val.*")
+    }
+
+    val partitionFilter = kafkaSource.getPartitionFilter
+    if (partitionFilter.nonEmpty) {
+      df.where(partitionFilter)
+    } else {
+      df
     }
   }
 
@@ -154,10 +155,17 @@ case class UnionTableResolutionRule(spark: SparkSession)
       "sessionInitStatement" -> s"SET yb_read_time TO $readTimestamp"
     )
 
-    spark.read
+    val df = spark.read
       .format("jdbc")
       .options(jdbcOptions)
       .load()
+
+    val partitionFilter = yugabyteSource.getPartitionFilter
+    if (partitionFilter.nonEmpty) {
+      df.where(partitionFilter)
+    } else {
+      df
+    }
   }
 
   private def loadPostgresDataFrame(
@@ -189,10 +197,17 @@ case class UnionTableResolutionRule(spark: SparkSession)
       "password" -> password
     )
 
-    spark.read
+    val df = spark.read
       .format("jdbc")
       .options(jdbcOptions)
       .load()
+
+    val partitionFilter = postgresSource.getPartitionFilter
+    if (partitionFilter.nonEmpty) {
+      df.where(partitionFilter)
+    } else {
+      df
+    }
   }
 
   private def loadIcebergDataFrame(
@@ -204,10 +219,17 @@ case class UnionTableResolutionRule(spark: SparkSession)
     val tablePath = s"$catalog.$schema.$table"
     val readTimestamp = icebergSource.getReadTimestamp
 
-    spark.read
+    val df = spark.read
       .format("iceberg")
       .option("as-of-timestamp", readTimestamp)
       .table(tablePath)
+
+    val partitionFilter = icebergSource.getPartitionFilter
+    if (partitionFilter.nonEmpty) {
+      df.where(partitionFilter)
+    } else {
+      df
+    }
   }
 
   private def projectToSchema(

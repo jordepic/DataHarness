@@ -212,7 +212,7 @@ public class DataHarnessMetadata implements ConnectorMetadata {
     }
 
     private String buildKafkaQuery(io.github.jordepic.proto.KafkaSourceMessage kafkaSource, String columnList) {
-        return String.format(
+        String baseQuery = String.format(
                 "SELECT %s FROM \"%s\".\"%s\".\"%s\" WHERE _partition_id = %d AND _partition_offset >= %d AND _partition_offset <= %d",
                 columnList,
                 kafkaSource.getTrinoCatalogName(),
@@ -221,16 +221,26 @@ public class DataHarnessMetadata implements ConnectorMetadata {
                 kafkaSource.getPartitionNumber(),
                 kafkaSource.getStartOffset(),
                 kafkaSource.getEndOffset());
+
+        if (!kafkaSource.getPartitionFilter().isEmpty()) {
+            return baseQuery + " AND (" + kafkaSource.getPartitionFilter() + ")";
+        }
+        return baseQuery;
     }
 
     private String buildIcebergQuery(io.github.jordepic.proto.IcebergSourceMessage icebergSource, String columnList) {
-        return String.format(
+        String baseQuery = String.format(
                 "SELECT %s FROM \"%s\".\"%s\".\"%s\" FOR VERSION AS OF %d",
                 columnList,
                 icebergSource.getTrinoCatalogName(),
                 icebergSource.getTrinoSchemaName(),
                 icebergSource.getTableName(),
                 icebergSource.getReadTimestamp());
+
+        if (!icebergSource.getPartitionFilter().isEmpty()) {
+            return baseQuery + " WHERE " + icebergSource.getPartitionFilter();
+        }
+        return baseQuery;
     }
 
     private String buildPostgresQuery(
@@ -243,7 +253,7 @@ public class DataHarnessMetadata implements ConnectorMetadata {
 
         long readTimestampNanos = readTimestamp * MILLIS_TO_NANOS;
 
-        return String.format(
+        String baseQuery = String.format(
                 "SELECT %s FROM (SELECT * FROM \"%s\".\"%s\".\"%s\" UNION ALL SELECT * FROM \"%s\".\"%s\".\"%s\") AS combined WHERE tsstart <= from_unixtime_nanos(%d) AND (tsend IS NULL OR tsend > from_unixtime_nanos(%d))",
                 columnList,
                 catalog,
@@ -254,6 +264,11 @@ public class DataHarnessMetadata implements ConnectorMetadata {
                 historyTableName,
                 readTimestampNanos,
                 readTimestampNanos);
+
+        if (!postgresSource.getPartitionFilter().isEmpty()) {
+            return baseQuery + " AND (" + postgresSource.getPartitionFilter() + ")";
+        }
+        return baseQuery;
     }
 
     private String quoteIdentifier(String name) {

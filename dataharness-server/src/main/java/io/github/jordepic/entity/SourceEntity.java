@@ -46,4 +46,8 @@ public interface SourceEntity {
     String getModifier();
 
     void setModifier(String modifier);
+
+    String getPartitionFilter();
+
+    void setPartitionFilter(String partitionFilter);
 }

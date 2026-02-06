@@ -1318,4 +1318,82 @@ public class CatalogServiceIntegrationTest {
 
         assertThat(responseAgain.getSuccess()).isTrue();
     }
+
+    @Test
+    public void testPartitionFilterOnIcebergSource() {
+        String tableName = "partition-filtered-table";
+        CreateTableRequest createRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+        stub.createTable(createRequest);
+
+        IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+                .setName("iceberg-partitioned-source")
+                .setTrinoCatalogName("iceberg")
+                .setTrinoSchemaName("default")
+                .setTableName("test_table")
+                .setReadTimestamp(1000000)
+                .setSparkCatalogName("spark_catalog")
+                .setSparkSchemaName("default")
+                .setModifier("")
+                .setPartitionFilter("partition_col = 1")
+                .build();
+
+        SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setIcebergSource(icebergSource)
+                .build();
+        UpsertSourcesRequest upsertRequest =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+        stub.upsertSources(upsertRequest);
+
+        LoadTableRequest loadRequest =
+                LoadTableRequest.newBuilder().setTableName(tableName).build();
+        LoadTableResponse loadResponse = stub.loadTable(loadRequest);
+
+        assertThat(loadResponse.getSourcesCount()).isEqualTo(1);
+        assertThat(loadResponse.getSources(0).hasIcebergSource()).isTrue();
+        assertThat(loadResponse.getSources(0).getIcebergSource().getPartitionFilter())
+                .isEqualTo("partition_col = 1");
+    }
+
+    @Test
+    public void testPartitionFilterOnKafkaSource() {
+        String tableName = "kafka-partition-filtered-table";
+        CreateTableRequest createRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+        stub.createTable(createRequest);
+
+        KafkaSourceMessage kafkaSource = KafkaSourceMessage.newBuilder()
+                .setName("kafka-partitioned-source")
+                .setTrinoCatalogName("kafka")
+                .setTrinoSchemaName("default")
+                .setTopicName("test_topic")
+                .setPartitionNumber(0)
+                .setStartOffset(0)
+                .setEndOffset(100)
+                .setBrokerUrls("localhost:9092")
+                .setSchemaType(SchemaType.AVRO)
+                .setSchema(
+                        "{\"type\": \"record\", \"name\": \"Test\", \"fields\": [{\"name\": \"id\", \"type\": \"int\"}]}")
+                .setModifier("")
+                .setPartitionFilter("id > 50")
+                .build();
+
+        SourceUpdate sourceUpdate = SourceUpdate.newBuilder()
+                .setTableName(tableName)
+                .setKafkaSource(kafkaSource)
+                .build();
+        UpsertSourcesRequest upsertRequest =
+                UpsertSourcesRequest.newBuilder().addSources(sourceUpdate).build();
+        stub.upsertSources(upsertRequest);
+
+        LoadTableRequest loadRequest =
+                LoadTableRequest.newBuilder().setTableName(tableName).build();
+        LoadTableResponse loadResponse = stub.loadTable(loadRequest);
+
+        assertThat(loadResponse.getSourcesCount()).isEqualTo(1);
+        assertThat(loadResponse.getSources(0).hasKafkaSource()).isTrue();
+        assertThat(loadResponse.getSources(0).getKafkaSource().getPartitionFilter())
+                .isEqualTo("id > 50");
+    }
 }

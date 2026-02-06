@@ -31,13 +31,13 @@ import jakarta.persistence.*;
         indexes = {
             @Index(
                     name = "idx_yugabyte_sources_table_id_table_name",
-                    columnList = "table_id, table_name",
+                    columnList = "table_id, table_name, partition_filter",
                     unique = true)
         },
         uniqueConstraints = {
             @UniqueConstraint(
                     name = "uk_yugabyte_sources_table_id_table_name",
-                    columnNames = {"table_id", "table_name"})
+                    columnNames = {"table_id", "table_name", "partition_filter"})
         })
 public class YugabyteSourceEntity implements SourceEntity {
     @Id
@@ -73,6 +73,9 @@ public class YugabyteSourceEntity implements SourceEntity {
 
     @Column(name = "modifier", nullable = false)
     private String modifier = "";
+
+    @Column(name = "partition_filter", nullable = false)
+    private String partitionFilter = "";
 
     public YugabyteSourceEntity() {}
 
@@ -183,5 +186,13 @@ public class YugabyteSourceEntity implements SourceEntity {
 
     public void setModifier(String modifier) {
         this.modifier = modifier;
+    }
+
+    public String getPartitionFilter() {
+        return partitionFilter;
+    }
+
+    public void setPartitionFilter(String partitionFilter) {
+        this.partitionFilter = partitionFilter;
     }
 }

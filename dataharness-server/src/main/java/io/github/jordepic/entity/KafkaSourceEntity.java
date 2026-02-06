@@ -80,6 +80,9 @@ public class KafkaSourceEntity implements SourceEntity {
     @Column(name = "modifier", nullable = false)
     private String modifier = "";
 
+    @Column(name = "partition_filter", nullable = false)
+    private String partitionFilter = "";
+
     public KafkaSourceEntity() {}
 
     public KafkaSourceEntity(
@@ -228,5 +231,13 @@ public class KafkaSourceEntity implements SourceEntity {
 
     public void setModifier(String modifier) {
         this.modifier = modifier;
+    }
+
+    public String getPartitionFilter() {
+        return partitionFilter;
+    }
+
+    public void setPartitionFilter(String partitionFilter) {
+        this.partitionFilter = partitionFilter;
     }
 }

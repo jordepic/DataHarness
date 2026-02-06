@@ -189,6 +189,35 @@ Main supported features:
 - Transfer data between data sources and atomically update their state in the DataHarness
 - Perform a rolling update of schemas and then atomically update the table schema in the DataHarness
 - Specify the table's schema in terms of Avro schema, Iceberg schema, or Protocol Buffers schema
+- Partition filtering: Apply filters to individual data sources to enable independent partitioning
+
+### Partition Filtering
+
+The DataHarness supports partition filtering at the source level, allowing you to have multiple "sources" from the same 
+physical data source representing different partitions. This enables:
+
+- Independent read timestamps per partition of a data source
+- Multiple sources from the same table/topic with different partition filters
+- Filter pushdown optimization in both Spark and Trino query engines
+
+When creating a source, you can optionally specify a `partition_filter` string that will be applied as a WHERE clause:
+
+```java
+IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+  .setTrinoCatalogName("iceberg")
+  .setTrinoSchemaName("default")
+  .setTableName(ICEBERG_TABLE_NAME)
+  .setReadTimestamp(snapshotId)
+  .setSparkCatalogName("gravitino")
+  .setSparkSchemaName("default")
+  .setPartitionFilter("partition_col = 1")  // Optional partition filter
+  .build();
+```
+
+**Note**: While certain technologies may have hash-based partitioning under the hood, the DataHarness currently operates 
+under the assumption that clients will convert partitioning schemas to be "identity-based". For example:
+- `Bucket(name, 16)` should be partitioned by `Identity(Hash(name) % 16)`
+- This requires users to pass the actual hash values in their queries
 
 Two main features that are not currently supported but we hope to support soon:
 

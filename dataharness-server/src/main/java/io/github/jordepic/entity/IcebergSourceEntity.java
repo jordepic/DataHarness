@@ -29,12 +29,15 @@ import jakarta.persistence.*;
 @Table(
         name = "iceberg_sources",
         indexes = {
-            @Index(name = "idx_iceberg_sources_table_id_table_name", columnList = "table_id, table_name", unique = true)
+            @Index(
+                    name = "idx_iceberg_sources_table_id_table_name",
+                    columnList = "table_id, table_name, partition_filter",
+                    unique = true)
         },
         uniqueConstraints = {
             @UniqueConstraint(
                     name = "uk_iceberg_sources_table_id_table_name",
-                    columnNames = {"table_id", "table_name"})
+                    columnNames = {"table_id", "table_name", "partition_filter"})
         })
 public class IcebergSourceEntity implements SourceEntity {
     @Id
@@ -67,6 +70,9 @@ public class IcebergSourceEntity implements SourceEntity {
 
     @Column(name = "modifier", nullable = false)
     private String modifier = "";
+
+    @Column(name = "partition_filter", nullable = false)
+    private String partitionFilter = "";
 
     public IcebergSourceEntity() {}
 
@@ -182,5 +188,13 @@ public class IcebergSourceEntity implements SourceEntity {
 
     public void setModifier(String modifier) {
         this.modifier = modifier;
+    }
+
+    public String getPartitionFilter() {
+        return partitionFilter;
+    }
+
+    public void setPartitionFilter(String partitionFilter) {
+        this.partitionFilter = partitionFilter;
     }
 }

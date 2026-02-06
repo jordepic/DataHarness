@@ -241,6 +241,108 @@ public class DataSourcePopulator {
         }
     }
 
+    public static class PartitionedIcebergResult {
+        public String icebergSchema;
+        public Map<Integer, Long> partitionSnapshots;
+
+        public PartitionedIcebergResult(String icebergSchema, Map<Integer, Long> partitionSnapshots) {
+            this.icebergSchema = icebergSchema;
+            this.partitionSnapshots = partitionSnapshots;
+        }
+    }
+
+    public static PartitionedIcebergResult populatePartitionedIceberg(
+            String minioEndpoint, String minioAccessKey, String minioSecretKey, String icebergTableName)
+            throws Exception {
+        System.setProperty("aws.region", "us-east-1");
+
+        createMinIOBucket(minioEndpoint, minioAccessKey, minioSecretKey);
+
+        org.apache.iceberg.Schema icebergSchema = new org.apache.iceberg.Schema(
+                Types.NestedField.required(1, "id", Types.IntegerType.get()),
+                Types.NestedField.required(2, "name", Types.StringType.get()),
+                Types.NestedField.required(3, "address", Types.StringType.get()));
+
+        String icebergSchemaJson = SchemaParser.toJson(icebergSchema);
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("uri", "http://localhost:9001/iceberg");
+        properties.put("s3.endpoint", minioEndpoint);
+        properties.put("s3.access-key-id", minioAccessKey);
+        properties.put("s3.secret-access-key", minioSecretKey);
+        properties.put("s3.path-style-access", "true");
+        properties.put("s3.region", "us-east-1");
+
+        try (RESTCatalog catalog = new RESTCatalog()) {
+            catalog.initialize("rest", properties);
+
+            Namespace namespace = Namespace.of("default");
+            if (!catalog.namespaceExists(namespace)) {
+                catalog.createNamespace(namespace);
+            }
+
+            TableIdentifier tableId = TableIdentifier.of(namespace, icebergTableName);
+
+            if (catalog.tableExists(tableId)) {
+                catalog.dropTable(tableId);
+            }
+
+            String tableLocation = "s3a://iceberg-bucket/warehouse/" + icebergTableName;
+            PartitionSpec partitionSpec =
+                    PartitionSpec.builderFor(icebergSchema).identity("id").build();
+            Table table = catalog.createTable(tableId, icebergSchema, partitionSpec, tableLocation, Map.of());
+
+            Map<Integer, Long> partitionSnapshots = new HashMap<>();
+
+            int[] ids = {1, 2, 3};
+            String[] names = {"PartitionedAlice", "PartitionedBob", "PartitionedCharlie"};
+            String[] addresses = {"123 Partition St", "456 Filter Ave", "789 Identity Ln"};
+
+            for (int i = 0; i < ids.length; i++) {
+                List<Record> records = new ArrayList<>();
+                org.apache.iceberg.data.GenericRecord record =
+                        org.apache.iceberg.data.GenericRecord.create(icebergSchema);
+                record.setField("id", ids[i]);
+                record.setField("name", names[i]);
+                record.setField("address", addresses[i]);
+                records.add(record);
+
+                String fileLocation = tableLocation + "/data/id=" + ids[i] + "/data" + i + ".parquet";
+                try {
+                    table.io().deleteFile(fileLocation);
+                } catch (Exception e) {
+                    logger.debug("File may not exist: {}", e.getMessage());
+                }
+
+                OutputFile outputFile = table.io().newOutputFile(fileLocation);
+                FileAppenderFactory<Record> factory = new GenericAppenderFactory(table.schema());
+                FileAppender<Record> appender = factory.newAppender(outputFile, FileFormat.PARQUET);
+
+                for (Record record2 : records) {
+                    appender.add(record2);
+                }
+                appender.close();
+
+                DataFile dataFile = DataFiles.builder(table.spec())
+                        .withInputFile(table.io().newInputFile(fileLocation))
+                        .withMetrics(appender.metrics())
+                        .withFormat(FileFormat.PARQUET)
+                        .withPartitionPath("id=" + ids[i])
+                        .build();
+
+                table.newAppend().appendFile(dataFile).commit();
+
+                long snapshotId = table.currentSnapshot().snapshotId();
+                partitionSnapshots.put(ids[i], snapshotId);
+
+                logger.info("Added record to partition id={} with snapshot {}", ids[i], snapshotId);
+            }
+
+            logger.info("Populated partitioned Iceberg table with {} partitions", ids.length);
+            return new PartitionedIcebergResult(icebergSchemaJson, partitionSnapshots);
+        }
+    }
+
     public static long populatePostgres(String jdbcUrl, String username, String password, String tableName)
             throws Exception {
         try (java.sql.Connection conn = java.sql.DriverManager.getConnection(jdbcUrl, username, password)) {

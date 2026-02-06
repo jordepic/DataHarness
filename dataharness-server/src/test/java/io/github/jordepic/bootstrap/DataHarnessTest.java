@@ -183,4 +183,26 @@ public class DataHarnessTest {
         DataHarnessHelper.queryTrinoAndVerify("SELECT * FROM data_harness.default.bootstrap", 9);
         logger.info("DataHarness Trino test completed successfully");
     }
+
+    @Test
+    public void testPartitionedDataHarnessViaSparkAndTrino() throws Exception {
+        String partitionedIcebergTableName = "iceberg_partitioned_test";
+
+        DataHarnessHelper.deleteDataHarnessTable(stub, "partitioned_bootstrap");
+        DataSourcePopulator.deleteKafkaTopic(BOOTSTRAP_SERVERS, "test_partitioned_topic");
+
+        DataSourcePopulator.PartitionedIcebergResult partitionedResult = DataSourcePopulator.populatePartitionedIceberg(
+                MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, partitionedIcebergTableName);
+
+        DataHarnessHelper.createPartitionedDataHarnessTable(
+                stub, "partitioned_bootstrap", partitionedIcebergTableName, partitionedResult);
+
+        DataHarnessHelper.querySparkConnectWithExplain(
+                "SELECT * FROM harness.data_harness.partitioned_bootstrap WHERE id = 1", 1);
+
+        DataHarnessHelper.queryTrinoWithExplain(
+                "SELECT * FROM data_harness.default.partitioned_bootstrap WHERE id = 1", 1);
+
+        logger.info("Partitioned DataHarness test completed successfully");
+    }
 }

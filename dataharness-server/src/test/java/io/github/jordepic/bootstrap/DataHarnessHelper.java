@@ -30,6 +30,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.connect.Dataset;
 import org.apache.spark.sql.connect.SparkSession;
@@ -168,6 +169,144 @@ public class DataHarnessHelper {
                 logger.info("Trino query returned {} rows", rowCount);
                 assertThat(rowCount).isEqualTo(expectedRowCount);
                 logger.info("Successfully verified {} rows from DataHarness table in Trino", expectedRowCount);
+            }
+        }
+    }
+
+    public static void createPartitionedDataHarnessTable(
+            CatalogServiceGrpc.CatalogServiceBlockingStub stub,
+            String tableName,
+            String icebergTableName,
+            DataSourcePopulator.PartitionedIcebergResult partitionedResult) {
+        CreateTableRequest createTableRequest =
+                CreateTableRequest.newBuilder().setName(tableName).build();
+
+        stub.createTable(createTableRequest);
+        logger.info("Created DataHarness table: {}", tableName);
+
+        UpsertSourcesRequest.Builder initialUpsertBuilder = UpsertSourcesRequest.newBuilder();
+
+        for (Map.Entry<Integer, Long> entry : partitionedResult.partitionSnapshots.entrySet()) {
+            int id = entry.getKey();
+
+            IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+                    .setName("partition_" + id + "_source")
+                    .setTrinoCatalogName("iceberg")
+                    .setTrinoSchemaName("default")
+                    .setTableName(icebergTableName)
+                    .setReadTimestamp(0)
+                    .setSparkCatalogName("gravitino")
+                    .setSparkSchemaName("default")
+                    .setPartitionFilter("id = " + id)
+                    .build();
+
+            SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
+                    .setTableName(tableName)
+                    .setIcebergSource(icebergSource)
+                    .build();
+
+            initialUpsertBuilder.addSources(icebergSourceUpdate);
+        }
+
+        stub.upsertSources(initialUpsertBuilder.build());
+        logger.info("Upserted initial sources with read_timestamp=0");
+
+        ClaimSourcesRequest.Builder claimBuilder = ClaimSourcesRequest.newBuilder();
+        for (int id : partitionedResult.partitionSnapshots.keySet()) {
+            String modifier = "partition_" + id + "_modifier";
+            SourceToClaim sourceToClaim = SourceToClaim.newBuilder()
+                    .setName("partition_" + id + "_source")
+                    .setModifier(modifier)
+                    .build();
+            claimBuilder.addSources(sourceToClaim);
+        }
+
+        stub.claimSources(claimBuilder.build());
+        logger.info("Claimed all partitioned sources");
+
+        for (Map.Entry<Integer, Long> entry : partitionedResult.partitionSnapshots.entrySet()) {
+            int id = entry.getKey();
+            long snapshotId = entry.getValue();
+            String modifier = "partition_" + id + "_modifier";
+
+            IcebergSourceMessage icebergSource = IcebergSourceMessage.newBuilder()
+                    .setName("partition_" + id + "_source")
+                    .setTrinoCatalogName("iceberg")
+                    .setTrinoSchemaName("default")
+                    .setTableName(icebergTableName)
+                    .setReadTimestamp(snapshotId)
+                    .setSparkCatalogName("gravitino")
+                    .setSparkSchemaName("default")
+                    .setPartitionFilter("id = " + id)
+                    .setModifier(modifier)
+                    .build();
+
+            SourceUpdate icebergSourceUpdate = SourceUpdate.newBuilder()
+                    .setTableName(tableName)
+                    .setIcebergSource(icebergSource)
+                    .build();
+
+            UpsertSourcesRequest upsertRequest = UpsertSourcesRequest.newBuilder()
+                    .addSources(icebergSourceUpdate)
+                    .build();
+
+            stub.upsertSources(upsertRequest);
+            logger.info("Upserted partition {} with snapshot {} and partition filter", id, snapshotId);
+        }
+
+        SetSchemaRequest schemaRequest = SetSchemaRequest.newBuilder()
+                .setTableName(tableName)
+                .setIcebergSchema(partitionedResult.icebergSchema)
+                .build();
+
+        stub.setSchema(schemaRequest);
+        logger.info("Set schema for DataHarness table");
+    }
+
+    public static void querySparkConnectWithExplain(String sparkQuery, int expectedRowCount) {
+        try (SparkSession spark =
+                SparkSession.builder().remote("sc://localhost:15002").getOrCreate()) {
+            logger.info("=== Spark Query Plan ===");
+            Dataset<Row> result = spark.sql("EXPLAIN FORMATTED " + sparkQuery);
+            List<Row> explainRows = result.collectAsList();
+            for (Row row : explainRows) {
+                logger.info("{}", row.getString(0));
+            }
+
+            logger.info("=== Spark Query Results ===");
+            result = spark.sql(sparkQuery);
+            List<Row> rows = result.collectAsList();
+            for (Row row : rows) {
+                logger.info("  id={}, name={}, address={}", row.getInt(0), row.getString(1), row.getString(2));
+            }
+            logger.info("Spark query returned {} rows", rows.size());
+            assertThat(rows).hasSize(expectedRowCount);
+        }
+    }
+
+    public static void queryTrinoWithExplain(String trinoQuery, int expectedRowCount) throws Exception {
+        String jdbcUrl = "jdbc:trino://localhost:8082";
+        try (Connection conn = DriverManager.getConnection(jdbcUrl, "trino", "")) {
+            try (Statement stmt = conn.createStatement()) {
+                logger.info("=== Trino Query Plan ===");
+                ResultSet rs = stmt.executeQuery("EXPLAIN ANALYZE " + trinoQuery);
+                while (rs.next()) {
+                    logger.info("{}", rs.getString(1));
+                }
+
+                logger.info("=== Trino Query Results ===");
+                rs = stmt.executeQuery(trinoQuery);
+                int rowCount = 0;
+                while (rs.next()) {
+                    logger.info(
+                            "  id={}, name={}, address={}",
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("address"));
+                    rowCount++;
+                }
+                logger.info("Trino query returned {} rows", rowCount);
+                assertThat(rowCount).isEqualTo(expectedRowCount);
             }
         }
     }
